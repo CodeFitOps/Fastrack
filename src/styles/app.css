@@ -1,0 +1,71 @@
+/*
+ * Shell-level layout only. Visual design comes from the exported design system
+ * bundle (_ds/…/styles.css); nothing here sets colour, type, or spacing scale.
+ */
+
+:root {
+  /* Fall back to 0 so these are safe to use on desktop, where the env() vars
+     are undefined. */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overscroll-behavior: none; /* kills pull-to-refresh and rubber-banding in a WebView */
+}
+
+body {
+  /* dvh accounts for mobile browser chrome appearing and disappearing; the
+     vh fallback matters for older Android WebViews. */
+  min-height: 100vh;
+  min-height: 100dvh;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/*
+ * Android 15 (API 35) forces edge-to-edge and no longer honours the old opt-out.
+ * Content must inset itself or it will sit under the status and gesture bars.
+ */
+#app {
+  box-sizing: border-box;
+  min-height: 100dvh;
+  padding-top: var(--safe-top);
+  padding-right: var(--safe-right);
+  padding-bottom: var(--safe-bottom);
+  padding-left: var(--safe-left);
+}
+
+/* A fixed bottom bar needs the inset added to its own padding, not the parent's. */
+.app-bottom-bar {
+  padding-bottom: calc(0.75rem + var(--safe-bottom));
+}
+
+/* Text selection and long-press callouts read as bugs in a native app shell. */
+body {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+input, textarea, [contenteditable] {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+/* Stops iOS/WebView zooming the viewport when a field is focused. */
+input, select, textarea {
+  font-size: max(16px, 1rem);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

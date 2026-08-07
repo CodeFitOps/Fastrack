@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.DS_Store
+*.local
+
+# Binarios de fuentes: descargar de Google Fonts, no versionar
+public/fonts/*.woff2
+
+# Shells nativos (se generan con `npx cap add` / `tauri init`)
+android/
+ios/
+src-tauri/target/

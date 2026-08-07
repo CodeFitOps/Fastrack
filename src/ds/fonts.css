@@ -1,0 +1,27 @@
+/* Self-hosted Archivo. Place the .woff2 files in public/fonts/ — they are not
+   committed here because they are binary assets, not code.
+
+   font-display: swap keeps text visible during load; on a packaged app the
+   files are local so the swap is imperceptible, but it also covers the dev
+   server. */
+@font-face {
+  font-family: 'Archivo';
+  src: url('/fonts/archivo-400.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Archivo';
+  src: url('/fonts/archivo-600.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Archivo';
+  src: url('/fonts/archivo-800.woff2') format('woff2');
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
