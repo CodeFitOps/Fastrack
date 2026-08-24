@@ -15,7 +15,8 @@
     "android:open": "npx cap open android",
     "android:run": "npm run android:sync && npx cap run android",
     "server": "node server/server.js",
-    "setup": "bash scripts/setup-server.sh"
+    "setup": "bash scripts/setup-server.sh",
+    "start": "npm run build:web && node server/server.js"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^5.2.0",

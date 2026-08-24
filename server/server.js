@@ -14,6 +14,9 @@
  */
 
 import { createServer } from 'node:http';
+import { readFile, stat } from 'node:fs/promises';
+import { join, normalize, extname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { mergeRecords, changedSince, highWaterMark } from '../src/core/sync.js';
 
 // Comprobación antes de importar node:sqlite. Sin esto, una versión antigua de
@@ -47,6 +50,70 @@ const DB_PATH = process.env.DB_PATH ?? './fastrack.db';
 const HOST = process.env.HOST ?? '127.0.0.1';
 
 const db = new DatabaseSync(DB_PATH);
+
+/**
+ * Servir la app compilada desde el mismo proceso.
+ *
+ * Ventaja principal: mismo origen. La app y la API comparten host y puerto, así
+ * que CORS deja de aplicar, hace falta un solo hostname en Cloudflare, y una
+ * sola política de Access protege ambas cosas.
+ *
+ * Se sirve `dist/`, no los fuentes: el servidor de desarrollo de Vite compila al
+ * vuelo y expone el código sin minimizar; no es para producción.
+ */
+const ROOT = fileURLToPath(new URL('..', import.meta.url));
+const DIST = process.env.DIST_PATH ?? join(ROOT, 'dist');
+const SERVE_APP = process.env.SERVE_APP !== '0';
+
+const MIME = {
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.webp': 'image/webp',
+  '.woff2': 'font/woff2',
+  '.ico': 'image/x-icon',
+};
+
+async function serveStatic(req, res) {
+  // Sólo la ruta, sin query. `normalize` más el prefijo comprobado impiden
+  // salirse de dist/ con '../'.
+  const urlPath = decodeURIComponent((req.url ?? '/').split('?')[0]);
+  let filePath = normalize(join(DIST, urlPath === '/' ? 'index.html' : urlPath));
+
+  if (!filePath.startsWith(DIST)) {
+    res.writeHead(403).end('Forbidden');
+    return true;
+  }
+
+  try {
+    const info = await stat(filePath);
+    if (info.isDirectory()) filePath = join(filePath, 'index.html');
+  } catch {
+    // Es una aplicación de una sola página: cualquier ruta desconocida devuelve
+    // index.html para que el enrutado del cliente la resuelva.
+    filePath = join(DIST, 'index.html');
+  }
+
+  try {
+    const body = await readFile(filePath);
+    const ext = extname(filePath);
+    // Los ficheros con hash en el nombre se cachean para siempre; index.html
+    // nunca, o quedaría clavada una versión antigua tras cada despliegue.
+    const immutable = /-[A-Za-z0-9_-]{8,}\.(js|css|woff2)$/.test(filePath);
+    res.writeHead(200, {
+      'content-type': MIME[ext] ?? 'application/octet-stream',
+      'cache-control': immutable ? 'public, max-age=31536000, immutable' : 'no-cache',
+    });
+    res.end(body);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS records (
@@ -216,6 +283,8 @@ const server = createServer(async (req, res) => {
   }
 
   if (req.method !== 'POST' || req.url !== '/sync') {
+    // Todo lo que no sea la API es la app, si está compilada.
+    if (SERVE_APP && req.method === 'GET' && (await serveStatic(req, res))) return undefined;
     return send(404, { error: 'not_found' });
   }
 
@@ -240,6 +309,7 @@ const server = createServer(async (req, res) => {
 server.listen(PORT, HOST, () => {
   console.log(`Fastrack sync escuchando en http://${HOST}:${PORT}`);
   console.log(`Base de datos: ${DB_PATH}`);
+  if (SERVE_APP) console.log(`Sirviendo la app desde: ${DIST}`);
   if (HOST !== '127.0.0.1') {
     console.warn('AVISO: no está en loopback. Asegúrate de tener Access delante.');
   }

@@ -68,12 +68,48 @@ sudo systemctl enable --now fastrack
 systemctl status fastrack
 ```
 
+## 3b. Compilar la app
+
+El servidor de sincronización sirve también la app compilada, desde el mismo
+puerto. Es lo que hace que **no haya CORS**: app y API comparten origen, hace
+falta un solo hostname en Cloudflare, y una sola política de Access protege
+ambas cosas.
+
+```bash
+npm install          # ahora sí hacen falta las dependencias
+npm run build:web    # genera dist/
+sudo systemctl restart fastrack
+```
+
+Ahora `http://192.168.1.110:8787` sirve la app entera. **Ya no hace falta
+`npm run dev`**, y conviene que no lo esté: el servidor de desarrollo de Vite
+compila al vuelo, sirve los fuentes sin minimizar e incluye herramientas de
+depuración. Nunca detrás de Cloudflare.
+
+Cierra el puerto que ya no usas:
+
+```bash
+sudo ufw delete allow in on br0 from 192.168.1.0/24 to any port 5173 proto tcp
+```
+
+Tras cada `git pull` con cambios de interfaz hay que recompilar:
+
+```bash
+git pull && npm run build:web && sudo systemctl restart fastrack
+```
+
+> Si prefieres separar la app del servidor, `SERVE_APP=0` desactiva los
+> estáticos y vuelve a hacer falta CORS y un segundo hostname.
+
 ## 4. Cloudflare
 
 Ya tienes túnel, así que es añadir un *public hostname* al que existe:
 
 1. Zero Trust → Networks → Tunnels → tu túnel → **Public Hostname** → *Add*.
-2. Subdominio `fastrack`, tu dominio, tipo **HTTP**, URL `localhost:8787`.
+2. Subdominio `fastrack`, tu dominio, tipo **HTTP**, URL `http://127.0.0.1:8787`.
+
+> **`127.0.0.1`, no `localhost`.** Si `cloudflared` resuelve `localhost` a IPv6
+> y el servidor escucha en IPv4, obtienes un 502 sin ninguna pista de por qué.
 
 Comprueba desde fuera:
 

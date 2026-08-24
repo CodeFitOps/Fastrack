@@ -127,6 +127,7 @@ User=$RUN_USER
 WorkingDirectory=$PWD
 Environment=DB_PATH=$RUN_HOME/fastrack.db
 Environment=PORT=$PORT
+Environment=NODE_ENV=production
 ExecStart=$NODE_BIN server/server.js
 Restart=always
 RestartSec=5
