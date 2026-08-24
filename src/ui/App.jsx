@@ -9,6 +9,8 @@ import { popLayer } from './layerStack.js';
 import { useI18n } from '../i18n/LanguageProvider.jsx';
 import { LanguagePicker } from './LanguagePicker.jsx';
 import { BackupSheet } from './BackupSheet.jsx';
+import { SyncSettingsSheet } from './SyncSettingsSheet.jsx';
+import { useSync } from './useSync.js';
 
 const TABS = [
   { key: 'today', labelKey: 'tab.today' },
@@ -24,8 +26,10 @@ const TABS = [
 export function App() {
   const [tab, setTab] = useState('today');
   const [backupOpen, setBackupOpen] = useState(false);
+  const [syncOpen, setSyncOpen] = useState(false);
   const tracker = useFastTracker();
   const { t } = useI18n();
+  const sync = useSync({ device: tracker.device, onApplied: tracker.reload });
 
   /**
    * Atrás: primero cierra la capa de más arriba (una hoja abierta), si no
@@ -51,6 +55,15 @@ export function App() {
         <h1 className="app-title">{t('app.title')}</h1>
         <button
           type="button"
+          className="btn btn-ghost app-sync-btn"
+          onClick={() => setSyncOpen(true)}
+          aria-label={t('sync.title')}
+          title={t('sync.title')}
+        >
+          <span className={`sync-dot sync-dot-${sync.state}`} aria-hidden="true" />
+        </button>
+        <button
+          type="button"
           className="btn btn-ghost app-backup-btn"
           onClick={() => setBackupOpen(true)}
           aria-label={t('backup.title')}
@@ -74,6 +87,16 @@ export function App() {
         {tab === 'history' && <HistoryScreen history={tracker.history} />}
         {tab === 'stats' && <StatsScreen history={tracker.history} />}
       </main>
+
+      <SyncSettingsSheet
+        open={syncOpen}
+        device={tracker.device}
+        syncState={sync.state}
+        lastRun={sync.lastRun}
+        onSyncNow={sync.syncNow}
+        onClose={() => setSyncOpen(false)}
+        onSave={tracker.updateDevice}
+      />
 
       <BackupSheet
         open={backupOpen}

@@ -186,6 +186,25 @@ export const es = {
   'role.secondary': 'Secundario — consulta y registra',
   'role.explain': 'Sólo un dispositivo empieza y termina ayunos. Los dos pueden registrar comidas, medidas y notas.',
 
+  /* ── sincronización ── */
+  'sync.title': 'SINCRONIZACIÓN',
+  'sync.serverUrl': 'DIRECCIÓN DEL SERVIDOR',
+  'sync.probe': 'PROBAR CONEXIÓN',
+  'sync.probeOk': 'El servidor responde.',
+  'sync.probeNeedsAuth': 'El servidor está ahí, pero pide identificarse. Abre esa dirección en el navegador y entra una vez.',
+  'sync.probeBadStatus': 'El servidor responde con un error. Mira el registro con: journalctl -u fastrack -n 40',
+  'sync.probeUnreachable': 'No se llega. Revisa la dirección, que el servicio esté arrancado, y que el móvil esté en la misma red.',
+  'sync.enable': 'Sincronizar con el servidor',
+  'sync.now': 'SINCRONIZAR AHORA',
+  'sync.lastRun': 'último: {time}',
+  'sync.onlyOnePrimary': 'Marca sólo un dispositivo como principal. Si hubiera dos, cada uno llevaría su propio ayuno y no habría forma de unirlos.',
+  'sync.errorGeneric': 'Falló la última sincronización',
+  'sync.state.idle': 'Al día',
+  'sync.state.syncing': 'Sincronizando…',
+  'sync.state.offline': 'Sin conexión — se guarda en local',
+  'sync.state.unauthenticated': 'Sin identificar',
+  'sync.state.error': 'Error',
+
   /* ── ajustes ── */
   'settings.language': 'IDIOMA',
 };

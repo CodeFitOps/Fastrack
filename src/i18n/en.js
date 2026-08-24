@@ -186,6 +186,25 @@ export const en = {
   'role.secondary': 'Secondary — review and log',
   'role.explain': 'Only one device starts and ends fasts. Both can log meals, readings and notes.',
 
+  /* ── sync ── */
+  'sync.title': 'SYNC',
+  'sync.serverUrl': 'SERVER ADDRESS',
+  'sync.probe': 'TEST CONNECTION',
+  'sync.probeOk': 'The server responds.',
+  'sync.probeNeedsAuth': "The server is there but wants you signed in. Open that address in a browser and log in once.",
+  'sync.probeBadStatus': 'The server responds with an error. Check the log: journalctl -u fastrack -n 40',
+  'sync.probeUnreachable': "Can't reach it. Check the address, that the service is running, and that your phone is on the same network.",
+  'sync.enable': 'Sync with the server',
+  'sync.now': 'SYNC NOW',
+  'sync.lastRun': 'last: {time}',
+  'sync.onlyOnePrimary': 'Mark only one device as primary. With two, each would run its own fast and there would be no way to join them.',
+  'sync.errorGeneric': 'The last sync failed',
+  'sync.state.idle': 'Up to date',
+  'sync.state.syncing': 'Syncing…',
+  'sync.state.offline': 'Offline — saved locally',
+  'sync.state.unauthenticated': 'Not signed in',
+  'sync.state.error': 'Error',
+
   /* ── settings ── */
   'settings.language': 'LANGUAGE',
 };

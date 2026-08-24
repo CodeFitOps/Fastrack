@@ -1100,3 +1100,79 @@
   line-height: 1.5;
   text-wrap: pretty;
 }
+
+/* ── sincronización ──────────────────────────────────────────────────── */
+
+.app-sync-btn {
+  margin-left: auto;
+  padding: 0 var(--space-2);
+}
+
+/* El botón de copia deja de empujar: ahora lo hace el de sincronización. */
+.app-backup-btn {
+  margin-left: 0;
+  font-size: 16px;
+  line-height: 1;
+  padding: 0 var(--space-2);
+}
+
+/* Punto de estado. Cuadrado, no redondo: el sistema tiene radio 0. */
+.sync-dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  background: var(--color-neutral-400);
+}
+
+.sync-dot-idle { background: var(--color-text); }
+.sync-dot-syncing { background: var(--color-accent); animation: sync-pulse 1s ease-in-out infinite; }
+.sync-dot-offline { background: var(--color-neutral-400); }
+.sync-dot-unauthenticated { background: var(--color-accent-400); }
+.sync-dot-error { background: var(--color-accent); }
+
+@keyframes sync-pulse {
+  50% { opacity: 0.3; }
+}
+
+.sync-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+
+.sync-status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--color-divider);
+  font-size: 12px;
+}
+
+.sync-roles {
+  display: flex;
+  width: 100%;
+}
+
+.sync-roles .seg-opt {
+  flex: 1;
+  font-size: 11px;
+}
+
+.sync-hint {
+  margin: var(--space-2) 0 0;
+  font-size: 11px;
+  line-height: 1.5;
+  text-wrap: pretty;
+}
+
+.sync-toggle {
+  padding: var(--space-2) 0;
+}
+
+.sync-probe-ok {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--color-accent-700);
+}
