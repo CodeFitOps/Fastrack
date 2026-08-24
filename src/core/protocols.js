@@ -25,19 +25,20 @@ const H = 3600_000;
 
 /** @type {Protocol[]} */
 export const PROTOCOLS = [
-  { id: '16:8', label: '16:8', hoursLabel: '16H', note: 'Daily window — the default', targetMs: 16 * H },
-  { id: '18:6', label: '18:6', hoursLabel: '18H', note: 'Tighter window, same rhythm', targetMs: 18 * H },
-  { id: '20:4', label: '20:4', hoursLabel: '20H', note: 'Warrior window', targetMs: 20 * H },
-  { id: 'omad', label: 'OMAD 23:1', hoursLabel: '23H', note: 'One meal a day', targetMs: 23 * H },
+  { id: '16:8', label: '16:8', hoursLabel: '16H', noteKey: 'protocol.16:8.note', targetMs: 16 * H },
+  { id: '18:6', label: '18:6', hoursLabel: '18H', noteKey: 'protocol.18:6.note', targetMs: 18 * H },
+  { id: '20:4', label: '20:4', hoursLabel: '20H', noteKey: 'protocol.20:4.note', targetMs: 20 * H },
+  { id: 'omad', label: 'OMAD 23:1', hoursLabel: '23H', noteKey: 'protocol.omad.note', targetMs: 23 * H },
   {
     id: 'extended',
-    label: 'EXTENDED',
+    // Se traduce: "EXTENDED" no dice nada en español.
+    labelKey: 'protocol.extended.label',
     hoursLabel: '24H+',
-    note: '24 – 72h, staged targets',
+    noteKey: 'protocol.extended.note',
     targetMs: 24 * H,
     stageTargetsMs: [24 * H, 36 * H, 48 * H, 72 * H],
   },
-  { id: 'free', label: 'FREE-FORM', hoursLabel: '—', note: 'No target, stop when you stop', targetMs: null },
+  { id: 'free', labelKey: 'protocol.free.label', hoursLabel: '—', noteKey: 'protocol.free.note', targetMs: null },
 ];
 
 export function protocolById(id) {
@@ -60,12 +61,17 @@ export function nextStageTargetMs(protocol, elapsedMs) {
  * boundaries are approximate and vary considerably between people.
  */
 export const STAGES = [
-  { hoursLabel: '00H', name: 'FED', note: 'Digesting, insulin elevated', fromH: 0, toH: 4 },
-  { hoursLabel: '04H', name: 'GLYCOGEN', note: 'Liver stores draining', fromH: 4, toH: 12 },
-  { hoursLabel: '12H', name: 'FAT BURN', note: 'Lipolysis ramping, insulin low', fromH: 12, toH: 16 },
-  { hoursLabel: '16H', name: 'KETOSIS', note: 'Ketones above 0.5 mmol/L', fromH: 16, toH: 24 },
-  { hoursLabel: '24H', name: 'AUTOPHAGY', note: 'Cellular clean-up accelerates', fromH: 24, toH: Infinity },
+  { id: 'fed', hoursLabel: '00H', nameKey: 'stage.fed', noteKey: 'stage.fed.note', fromH: 0, toH: 4 },
+  { id: 'glycogen', hoursLabel: '04H', nameKey: 'stage.glycogen', noteKey: 'stage.glycogen.note', fromH: 4, toH: 12 },
+  { id: 'fatburn', hoursLabel: '12H', nameKey: 'stage.fatburn', noteKey: 'stage.fatburn.note', fromH: 12, toH: 16 },
+  { id: 'ketosis', hoursLabel: '16H', nameKey: 'stage.ketosis', noteKey: 'stage.ketosis.note', fromH: 16, toH: 24 },
+  { id: 'autophagy', hoursLabel: '24H', nameKey: 'stage.autophagy', noteKey: 'stage.autophagy.note', fromH: 24, toH: Infinity },
 ];
+
+/** Etiqueta visible de un protocolo: fija (16:8) o traducida (LIBRE). */
+export function protocolLabel(protocol, t) {
+  return protocol.labelKey ? t(protocol.labelKey) : protocol.label;
+}
 
 /** @returns {'done'|'active'|'pending'} */
 export function stageStatus(stage, elapsedMs, isFasting) {

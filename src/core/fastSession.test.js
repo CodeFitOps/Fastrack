@@ -6,6 +6,8 @@ import {
   endFast,
   isRunning,
   isOpenEnded,
+  validateStart,
+  adjustStart,
   elapsedMs,
   remainingMs,
   progress,
@@ -98,4 +100,56 @@ test('FREE-FORM runs with no target instead of silently becoming a 16h fast', ()
 test('an open-ended fast still tracks elapsed time normally', () => {
   const s = startFast({ targetMs: null, now: T0 });
   assert.equal(formatDuration(elapsedMs(s, T0 + 41 * H + 300_000)), '41:05:00');
+});
+
+/* ---- inicio retrasado ---- */
+
+test('un ayuno se puede empezar con una hora de inicio pasada', () => {
+  const s = startFast({ targetMs: 16 * H, startedAt: T0 - 5 * H, now: T0 });
+  assert.equal(s.startedAt, T0 - 5 * H);
+  assert.equal(elapsedMs(s, T0), 5 * H);
+});
+
+test('un inicio en el futuro se rechaza — eso sería un plan, no un ayuno', () => {
+  assert.equal(validateStart(T0 + H, T0), 'fast.startInFuture');
+  assert.throws(() => startFast({ targetMs: 16 * H, startedAt: T0 + H, now: T0 }), RangeError);
+});
+
+test('un inicio de hace más de una semana se rechaza como probable dedazo', () => {
+  assert.equal(validateStart(T0 - 8 * 24 * H, T0), 'fast.startTooOld');
+  assert.equal(validateStart(T0 - 6 * 24 * H, T0), null);
+});
+
+test('un inicio que no es número se rechaza', () => {
+  assert.equal(validateStart(NaN, T0), 'fast.startInvalid');
+  assert.equal(validateStart(undefined, T0), 'fast.startInvalid');
+});
+
+test('si el inicio retrasado ya supera el objetivo, el ayuno nace cumplido', () => {
+  // Empiezo un 16:8 diciendo que arranqué hace 18 horas.
+  const s = startFast({ targetMs: 16 * H, startedAt: T0 - 18 * H, now: T0 });
+  assert.equal(isComplete(s, T0), true);
+  assert.equal(overtimeMs(s, T0), 2 * H);
+  assert.equal(remainingMs(s, T0), 0);
+  // El objetivo cae en el pasado: no hay nada que programar.
+  assert.ok(goalReachedAt(s) < T0);
+});
+
+test('adjustStart mueve el inicio sin mutar la sesión original', () => {
+  const s = startFast({ targetMs: 16 * H, now: T0 });
+  const movida = adjustStart(s, T0 - 3 * H, T0);
+  assert.equal(movida.startedAt, T0 - 3 * H);
+  assert.equal(s.startedAt, T0, 'la original no debe cambiar');
+  assert.equal(elapsedMs(movida, T0), 3 * H);
+});
+
+test('adjustStart no permite dejar el inicio después del final', () => {
+  const acabada = endFast(startFast({ targetMs: 16 * H, now: T0 - 10 * H }), T0 - 2 * H);
+  assert.throws(() => adjustStart(acabada, T0 - H, T0), RangeError);
+});
+
+test('adjustStart aplica las mismas reglas que el inicio', () => {
+  const s = startFast({ targetMs: 16 * H, now: T0 });
+  assert.throws(() => adjustStart(s, T0 + H, T0), RangeError);
+  assert.throws(() => adjustStart(s, T0 - 30 * 24 * H, T0), RangeError);
 });

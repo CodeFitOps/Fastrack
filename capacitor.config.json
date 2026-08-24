@@ -1,0 +1,24 @@
+{
+  "appId": "com.codefitops.fastrack",
+  "appName": "Fastrack",
+  "webDir": "dist",
+  "android": {
+    "allowMixedContent": false,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": false
+  },
+  "plugins": {
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_fastrack",
+      "iconColor": "#EC3013"
+    },
+    "SplashScreen": {
+      "launchAutoHide": true,
+      "backgroundColor": "#F3F2F2",
+      "showSpinner": false
+    }
+  },
+  "server": {
+    "androidScheme": "https"
+  }
+}

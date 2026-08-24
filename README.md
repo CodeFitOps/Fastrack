@@ -102,14 +102,93 @@ Tauri is still the better pick if background alerts do not matter: one toolchain
 for both targets and a ~5 MB binary against Electron's ~100 MB. `storage.js` and
 `notifications.js` are the only files that change either way.
 
+## Registro de eventos (esquema 2)
+
+Un evento es una entrada independiente con su propia hora: `{ id, at, kind,
+sessionId, value?, label?, note? }`. Tipos en `src/core/events.js` — comida,
+cetonas, glucosa, peso, agua, entreno, sensación, nota.
+
+Los eventos **no cuelgan de la sesión**. Una comida ocurre por definición fuera
+del ayuno; si fueran hijos de una sesión no habría dónde guardarla. Llevan
+`sessionId` cuando había un ayuno activo, y `eventsDuring()` los recupera por
+ventana temporal, no por ese campo — así aparecen también los fechados hacia
+atrás dentro del ayuno.
+
+La hora es editable al registrar. `loggedAt` se anota sólo si difiere en más de
+un minuto de `at`, y la UI lo marca como «anotado después»: un valor recordado
+tres horas más tarde no merece la misma confianza que uno medido en el momento.
+
+`migrateIfNeeded()` convierte los campos sueltos (kcal/ketones/water/note) de
+las sesiones ya guardadas en eventos fechados al cierre del ayuno, marcados
+`migrated: true`. Es idempotente y no reescribe las sesiones — sus campos
+antiguos quedan intactos por si hubiera que volver a migrar.
+
 ## Remaining work
 
-1. Port the History and Stats tabs, and the start/log sheets (same table above).
-2. Real dates replacing the hardcoded strings.
-3. Migrate seeded history fixtures out of state.
+1. Sparkline de cetonas en Stats: los datos ya existen (`series(events,
+   'ketones')`), falta dibujarlo.
+2. Línea de tiempo del día completo, no sólo del ayuno — es la que enseña el
+   patrón real de comidas y entrenos.
+3. Editar un evento ya guardado (`editEvent` existe en el hook, sin UI).
+4. Drop the three Archivo `.woff2` files into `public/fonts/`.
 4. Android: `POST_NOTIFICATIONS` in the manifest, requested at runtime on API
    33+; hardware back button handling; API 35 forces edge-to-edge (handled in
    `app.css`).
 5. macOS: Developer ID signing plus notarization, or Gatekeeper blocks launch.
 6. **Open question** — fixed phone-width window on macOS, or a responsive
    desktop layout? Decides how much of 1a survives as-is.
+
+## Idiomas (ES / EN)
+
+Sin librería: `src/i18n/` son un catálogo por idioma, una función `t()` con
+interpolación y plurales, y un contexto de React. i18next habría costado ~40 kB
+de bundle para resolver cuarenta líneas, y esto se empaqueta para móvil.
+
+**Regla del proyecto: ningún texto visible se escribe dentro de un componente.**
+Todo pasa por `t()`. Añadir un tercer idioma es copiar `es.js` y traducirlo.
+
+El núcleo tampoco guarda texto: los protocolos, las etapas metabólicas y los
+tipos de evento llevan `labelKey`/`noteKey`, no cadenas.
+
+### Lo que se guarda, y por qué importa
+
+Una sensación se almacena como `labelKey: 'mood.hungry'`, no como «Con hambre».
+Un registro anotado en español se lee correctamente al cambiar la app a inglés.
+El texto libre del usuario (`label`, `note`) se guarda tal cual y no se traduce
+nunca — «2 huevos, medio aguacate» es suyo.
+
+### El test que evita el fallo típico
+
+`i18n.test.js` compara los juegos de claves de los dos catálogos y falla si una
+existe en uno y no en el otro. Sin él, añadir un texto en español y olvidarlo en
+inglés no rompe nada: simplemente sale la clave cruda en pantalla, y sólo se
+descubre usando esa pantalla concreta en ese idioma.
+
+El idioma se detecta del navegador (ignorando el país: alguien con el móvil en
+inglés viviendo en España quiere la app en inglés), se puede cambiar con el
+selector de la cabecera, y se recuerda.
+
+## Copia de seguridad
+
+Los datos viven en el dispositivo y no hay servidor. Eso significa que vaciar el
+navegador los borra, y que el navegador y el APK son **almacenamientos
+distintos**: instalar la app no trae lo registrado en la web.
+
+El botón `⤓` de la cabecera exporta un JSON e importa uno.
+
+**Importar fusiona, no reemplaza.** Importar en un dispositivo que ya tiene
+registros nunca los borra: casi siempre se quiere juntar lo de dos sitios, y un
+reemplazo silencioso no se puede deshacer. Ante dos entradas con el mismo id
+gana la del dispositivo, porque lo importado se exportó antes y sobrescribir
+podría revertir una corrección posterior. Las entradas sin id se deduplican por
+contenido, así que importar el mismo fichero dos veces no duplica nada.
+
+El ayuno en curso viaja en la copia — cambiar de dispositivo a mitad de un ayuno
+de 20 h y perderlo sería el peor momento posible — pero **nunca pisa uno que ya
+esté corriendo** en el destino.
+
+Los timestamps son epoch absolutos, así que una copia hecha en Madrid se importa
+bien en cualquier zona horaria: sólo cambia cómo se muestra.
+
+En Android la exportación pasa por el diálogo de compartir del sistema, porque
+en un WebView el truco del enlace con Blob puede no hacer nada.

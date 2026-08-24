@@ -10,3 +10,10 @@ public/fonts/*.woff2
 android/
 ios/
 src-tauri/target/
+
+# Empaquetado
+release/
+build/icon.icns
+.env
+*.keystore
+*.jks

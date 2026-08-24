@@ -1,0 +1,1102 @@
+/*
+ * Capa de presentación de las pantallas portadas.
+ *
+ * El prototipo llevaba todo el estilo en atributos `style` con hex y px
+ * literales. Al portar, ese estilo se convirtió en nombres de clase semánticos
+ * (lo que pide el propio _adherence.oxlintrc.json del proyecto) — pero las
+ * clases nunca se escribieron. Este archivo es esa deuda.
+ *
+ * Todo sale de los tokens de src/ds/styles.css: ni un hex, ni un px suelto
+ * donde exista un token. Las excepciones son medidas estructurales que el
+ * sistema no cubre (alturas de gráfico, grosor de barras).
+ *
+ * Modernist: radio 0, reglas de 2px, todo alineado a la izquierda, el acento
+ * sólo para la acción principal y el estado vivo.
+ */
+
+/* ── shell ─────────────────────────────────────────────────────────── */
+
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  background: var(--color-bg);
+}
+
+.app-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-4) var(--space-3);
+  border-bottom: 2px solid var(--color-divider);
+}
+
+.app-mark {
+  width: 14px;
+  height: 14px;
+  background: var(--color-accent);
+}
+
+.app-title {
+  font-size: 18px;
+  letter-spacing: 0.14em;
+  margin: 0;
+}
+
+.app-body {
+  flex: 1;
+}
+
+.app-loading {
+  padding: var(--space-6) var(--space-4);
+  color: color-mix(in srgb, var(--color-text) 55%, transparent);
+}
+
+.app-bottom-bar {
+  display: flex;
+  position: sticky;
+  bottom: 0;
+  background: var(--color-bg);
+  border-top: 2px solid var(--color-divider);
+}
+
+.app-tab {
+  flex: 1;
+  padding: var(--space-3) var(--space-2);
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: color-mix(in srgb, var(--color-text) 55%, transparent);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.app-tab-active {
+  color: var(--color-text);
+  box-shadow: inset 0 2px 0 var(--color-accent);
+}
+
+/* ── Today ─────────────────────────────────────────────────────────── */
+
+.today {
+  padding: var(--space-4);
+}
+
+.today-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.today-state,
+.today-proto {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+}
+
+.today-proto {
+  color: color-mix(in srgb, var(--color-text) 55%, transparent);
+}
+
+/* tabular-nums evita que el reloj cambie de ancho al pasar los dígitos */
+.today-clock {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 54px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+  margin: var(--space-3) 0 var(--space-2);
+}
+
+.today-sub {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  font-size: 12px;
+}
+
+.today-pct {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-variant-numeric: tabular-nums;
+}
+
+.today-bar {
+  height: 6px;
+  background: var(--color-neutral-300);
+  margin: var(--space-3) 0;
+}
+
+.today-bar-fill {
+  height: 100%;
+  transition: width 1s linear;
+}
+
+.today-times {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+  margin: var(--space-4) 0;
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--color-divider);
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.today-times dt {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  color: color-mix(in srgb, var(--color-text) 55%, transparent);
+}
+
+.today-times dd {
+  margin: var(--space-1) 0 0;
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── escalera metabólica ───────────────────────────────────────────── */
+
+.stage-ladder {
+  list-style: none;
+  margin: 0 0 var(--space-4);
+  padding: 0;
+}
+
+.stage {
+  display: grid;
+  grid-template-columns: 42px 88px 1fr;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.stage-hour,
+.stage-name {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  font-variant-numeric: tabular-nums;
+}
+
+.stage-note {
+  font-size: 11px;
+}
+
+/* Sólo la etapa activa lleva acento; las cumplidas bajan de peso, las
+   futuras se atenúan. Es la jerarquía que hacía el prototipo con hex. */
+.stage-pending {
+  opacity: 0.45;
+}
+
+.stage-active .stage-hour,
+.stage-active .stage-name {
+  color: var(--color-accent);
+}
+
+.stage-active {
+  box-shadow: inset 2px 0 0 var(--color-accent);
+  padding-left: var(--space-2);
+}
+
+/* ── History ───────────────────────────────────────────────────────── */
+
+.history-head {
+  padding: var(--space-4);
+  border-bottom: 2px solid var(--color-divider);
+}
+
+.history-summary {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  font-size: 12px;
+}
+
+.history-count {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 34px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.history-empty {
+  padding: var(--space-6) var(--space-4);
+}
+
+.history-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.history-row {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.history-row-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.history-date {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: color-mix(in srgb, var(--color-text) 55%, transparent);
+}
+
+.history-row-main {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.history-dur {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 24px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.history-window {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.history-bar {
+  height: 6px;
+  background: var(--color-neutral-300);
+  margin-top: var(--space-2);
+}
+
+.history-bar-fill {
+  height: 100%;
+  background: var(--color-text);
+}
+
+.history-metrics {
+  display: flex;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
+}
+
+.history-note {
+  margin: var(--space-2) 0 0;
+  padding-left: var(--space-2);
+  border-left: 2px solid var(--color-neutral-300);
+  font-size: 11.5px;
+  line-height: 1.45;
+  text-wrap: pretty;
+}
+
+/* ── Stats ─────────────────────────────────────────────────────────── */
+
+.stats-panel {
+  padding: var(--space-4);
+  border-bottom: 2px solid var(--color-divider);
+}
+
+.stats-headline {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  font-size: 12px;
+}
+
+.stats-headline strong {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 44px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+}
+
+.week-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-1);
+  height: 118px;
+  margin-top: var(--space-4);
+  border-bottom: 2px solid var(--color-divider);
+}
+
+.week-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  height: 100%;
+}
+
+.week-hours {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+  color: color-mix(in srgb, var(--color-text) 55%, transparent);
+  margin-bottom: var(--space-1);
+}
+
+.week-bar {
+  min-height: 1px; /* un día a cero sigue mostrando la línea base */
+}
+
+.week-labels {
+  display: flex;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+}
+
+.week-labels span {
+  flex: 1;
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  color: color-mix(in srgb, var(--color-text) 55%, transparent);
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin: 0;
+  border-bottom: 2px solid var(--color-divider);
+}
+
+.stat {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.stat:nth-child(even) {
+  border-left: 1px solid var(--color-divider);
+}
+
+.stat dt {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  color: color-mix(in srgb, var(--color-text) 55%, transparent);
+}
+
+.stat dd {
+  margin: var(--space-2) 0 0;
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 22px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.consistency-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 5px;
+}
+
+.consistency-cell {
+  aspect-ratio: 1;
+  border: 1px solid var(--color-divider);
+}
+
+.consistency-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  list-style: none;
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  font-size: 10px;
+}
+
+.consistency-legend li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.consistency-legend i {
+  width: 10px;
+  height: 10px;
+  border: 1px solid var(--color-divider);
+}
+
+/* ── hoja de selección de protocolo ────────────────────────────────── */
+
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  background: color-mix(in srgb, var(--color-neutral-900) 50%, transparent);
+  z-index: 10;
+}
+
+.sheet {
+  width: 100%;
+  max-height: 85dvh;
+  overflow-y: auto;
+  background: var(--color-bg);
+  border-top: 2px solid var(--color-text);
+  padding-bottom: calc(var(--space-4) + var(--safe-bottom));
+}
+
+.sheet-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: var(--space-4);
+  border-bottom: 2px solid var(--color-divider);
+}
+
+.proto-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.proto-option {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--color-divider);
+  cursor: pointer;
+  font: inherit;
+}
+
+.proto-option:hover {
+  background: color-mix(in srgb, var(--color-text) 7%, transparent);
+}
+
+.proto-option:active {
+  background: color-mix(in srgb, var(--color-text) 14%, transparent);
+}
+
+.proto-label {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 17px;
+}
+
+.proto-hours {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-accent);
+}
+
+.proto-note {
+  grid-column: 1 / -1;
+  font-size: 11.5px;
+  color: color-mix(in srgb, var(--color-text) 55%, transparent);
+}
+
+/* ── escritorio ────────────────────────────────────────────────────── */
+
+/*
+ * Pendiente de decisión: por ahora la ventana de macOS centra el layout de
+ * móvil en una columna con ancho de teléfono, en vez de estirar las pantallas
+ * a lo ancho. Es lo honesto mientras no se rediseñen History y Stats para
+ * pantalla grande — estirar una barra semanal a 1400px queda mal.
+ */
+@media (min-width: 700px) {
+  .app {
+    width: 420px;
+    margin: 0 auto;
+    border-left: 2px solid var(--color-divider);
+    border-right: 2px solid var(--color-divider);
+  }
+}
+
+/* Contenedores de pestaña: sin estilo propio, existen como gancho de layout
+   y para que el selector de escritorio tenga a qué agarrarse. */
+.history,
+.stats {
+  display: block;
+}
+
+/* ── registro y línea de tiempo ─────────────────────────────────────── */
+
+.today-log {
+  margin: var(--space-4) 0;
+  padding-top: var(--space-3);
+  border-top: 2px solid var(--color-divider);
+}
+
+.today-log-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.timeline-empty {
+  font-size: 11.5px;
+  margin: var(--space-2) 0 0;
+}
+
+.timeline {
+  list-style: none;
+  margin: var(--space-2) 0 0;
+  padding: 0;
+}
+
+.timeline-item {
+  display: grid;
+  grid-template-columns: 44px 46px 1fr auto;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.timeline-elapsed {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: color-mix(in srgb, var(--color-text) 55%, transparent);
+}
+
+/* Riel corto que sitúa el evento dentro del ayuno de un vistazo. */
+.timeline-track {
+  position: relative;
+  height: 2px;
+  background: var(--color-neutral-300);
+}
+
+.timeline-dot {
+  position: absolute;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  background: var(--color-accent);
+  transform: translate(-50%, -50%);
+}
+
+.timeline-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.timeline-kind {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.timeline-value {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.timeline-label,
+.timeline-note {
+  font-size: 11.5px;
+}
+
+.timeline-flag {
+  font-size: 10px;
+  font-style: italic;
+}
+
+.timeline-del {
+  font-size: 18px;
+  line-height: 1;
+  padding: 0 var(--space-2);
+}
+
+/* ── hoja de registro ───────────────────────────────────────────────── */
+
+.log-kinds {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1px;
+  background: var(--color-divider);
+  border-bottom: 1px solid var(--color-divider);
+}
+
+/* Objetivo grande: esto se usa con una mano y a menudo con prisa. */
+.log-kind {
+  padding: var(--space-4) var(--space-3);
+  min-height: 60px;
+  text-align: left;
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 15px;
+  color: var(--color-text);
+  background: var(--color-bg);
+  border: 0;
+  cursor: pointer;
+}
+
+.log-kind:hover {
+  background: color-mix(in srgb, var(--color-text) 7%, transparent);
+}
+
+.log-kind:active {
+  background: var(--color-accent);
+  color: var(--color-bg);
+}
+
+.log-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+
+.log-warn {
+  margin: 0;
+  padding: var(--space-2);
+  font-size: 11.5px;
+  background: var(--color-accent-100);
+  color: var(--color-accent-800);
+  border-left: 2px solid var(--color-accent);
+}
+
+.log-error {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--color-accent-700);
+}
+
+.log-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.log-option {
+  cursor: pointer;
+  border: 0;
+  font: inherit;
+  font-size: 11px;
+}
+
+.log-time {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.log-time-input {
+  width: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── diario ─────────────────────────────────────────────────────────── */
+
+.journal-frames {
+  display: flex;
+  overflow-x: auto;
+  border-bottom: 2px solid var(--color-divider);
+}
+
+.journal-frame {
+  flex: 0 0 auto;
+  padding: var(--space-3);
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: color-mix(in srgb, var(--color-text) 55%, transparent);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.journal-frame-on {
+  color: var(--color-bg);
+  background: var(--color-accent);
+}
+
+.journal-custom {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.journal-range {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.journal-range-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.journal-summary {
+  padding: var(--space-4);
+  border-bottom: 2px solid var(--color-divider);
+}
+
+.journal-summary-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-size: 11px;
+}
+
+.journal-fasted {
+  margin: var(--space-2) 0 0;
+  font-size: 12px;
+}
+
+.journal-fasted strong {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 24px;
+  font-variant-numeric: tabular-nums;
+}
+
+.journal-kinds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  list-style: none;
+  margin: var(--space-3) 0 0;
+  padding: 0;
+}
+
+.journal-kinds li {
+  display: flex;
+  flex-direction: column;
+}
+
+.journal-kind-name {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-text) 55%, transparent);
+}
+
+.journal-kind-value {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Eje del tramo: bandas = ayunos, marcas = eventos. */
+.axis {
+  position: relative;
+  height: 24px;
+  margin: 0 var(--space-4);
+  border-bottom: 2px solid var(--color-divider);
+}
+
+.axis-band {
+  position: absolute;
+  top: 6px;
+  height: 10px;
+  background: color-mix(in srgb, var(--color-accent) 22%, transparent);
+  border-left: 1px solid var(--color-accent);
+}
+
+.axis-mark {
+  position: absolute;
+  top: 3px;
+  width: 2px;
+  height: 16px;
+  background: var(--color-text);
+  transform: translateX(-1px);
+}
+
+.journal-day {
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.journal-day-label {
+  margin: 0;
+  padding: var(--space-3) var(--space-4) var(--space-1);
+  color: var(--color-accent);
+}
+
+.journal-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 var(--space-4) var(--space-2);
+}
+
+.journal-row {
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+  border-top: 1px solid var(--color-divider);
+}
+
+.journal-time {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: color-mix(in srgb, var(--color-text) 55%, transparent);
+}
+
+.journal-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.journal-kind {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.journal-value {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.journal-label,
+.journal-note {
+  font-size: 11.5px;
+}
+
+.journal-flag {
+  font-size: 9.5px;
+}
+
+.journal-empty {
+  padding: var(--space-6) var(--space-4);
+  font-size: 12px;
+}
+
+.journal {
+  display: block;
+}
+
+/* ── selector de idioma ─────────────────────────────────────────────── */
+
+.lang-picker {
+  display: flex;
+  margin-left: auto;
+  border: 1px solid var(--color-divider);
+}
+
+.lang-opt {
+  padding: var(--space-1) var(--space-2);
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: color-mix(in srgb, var(--color-text) 55%, transparent);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.lang-opt + .lang-opt {
+  border-left: 1px solid var(--color-divider);
+}
+
+.lang-opt:hover {
+  background: color-mix(in srgb, var(--color-text) 7%, transparent);
+}
+
+.lang-opt-on {
+  background: var(--color-accent);
+  color: var(--color-bg);
+}
+
+/* ── elegir hora de inicio ──────────────────────────────────────────── */
+
+.proto-start {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+
+.startpick {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.startpick-quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.startpick-opt {
+  cursor: pointer;
+  border: 0;
+  font: inherit;
+  font-size: 11px;
+  /* Objetivo cómodo: esto se toca con el pulgar. */
+  padding: var(--space-2) var(--space-3);
+}
+
+.startpick-input {
+  font-variant-numeric: tabular-nums;
+}
+
+.startpick-note {
+  margin: 0;
+  font-size: 11.5px;
+}
+
+.editstart-preview {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--color-divider);
+  border-bottom: 1px solid var(--color-divider);
+  font-size: 11.5px;
+}
+
+.editstart-preview strong {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 24px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+/* La hora de inicio es pulsable cuando hay ayuno: se marca con un subrayado
+   discreto en vez de parecer un botón, para no competir con la acción principal. */
+.today-edit-start {
+  padding: 0;
+  font: inherit;
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text);
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid var(--color-accent);
+  cursor: pointer;
+}
+
+.today-edit-start:hover {
+  color: var(--color-accent);
+}
+
+/* ── copia de seguridad ─────────────────────────────────────────────── */
+
+.app-backup-btn {
+  margin-left: auto;
+  font-size: 16px;
+  line-height: 1;
+  padding: 0 var(--space-2);
+}
+
+/* El selector de idioma deja de empujar solo: ahora comparte fila con el
+   botón de copia, que ya lleva el margen automático. */
+.lang-picker {
+  margin-left: var(--space-2);
+}
+
+.backup-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+
+.backup-why,
+.backup-note {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  text-wrap: pretty;
+}
+
+/* El input real se oculta pero sigue siendo alcanzable por teclado: la etiqueta
+   entera es el botón. */
+.backup-import {
+  position: relative;
+  cursor: pointer;
+}
+
+.backup-import input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.backup-result {
+  padding: var(--space-3);
+  background: var(--color-surface);
+  border-left: 2px solid var(--color-accent);
+  font-size: 12px;
+}
+
+.backup-result p {
+  margin: 0 0 var(--space-2);
+}
+
+.backup-result ul {
+  margin: 0;
+  padding-left: var(--space-4);
+}
+
+/* ── papel del dispositivo ──────────────────────────────────────────── */
+
+.role-note {
+  margin: var(--space-2) 0 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  text-wrap: pretty;
+}

@@ -1,0 +1,191 @@
+/**
+ * English catalogue.
+ *
+ * Must carry exactly the same keys as es.js — there is a test that compares the
+ * two and fails on any key present in one and missing from the other.
+ */
+
+export const en = {
+  /* ── general ── */
+  'app.title': 'FAST',
+  'app.loading': 'Loading',
+  'common.cancel': 'CANCEL',
+  'common.back': 'BACK',
+  'common.save': 'SAVE',
+  'common.add': '+ ADD',
+  'common.delete': 'Delete {what}',
+  'common.none': '—',
+  'common.optional': '(OPTIONAL)',
+
+  /* ── tabs ── */
+  'tab.today': 'TODAY',
+  'tab.journal': 'JOURNAL',
+  'tab.history': 'HISTORY',
+  'tab.stats': 'STATS',
+
+  /* ── Today ── */
+  'today.fasting': 'FASTING',
+  'today.eating': 'EATING WINDOW',
+  'today.started': 'STARTED',
+  'today.targetEnds': 'TARGET ENDS',
+  'today.lastFast': 'LAST FAST',
+  'today.noFast': 'no active fast — pick a protocol to begin',
+  'today.openEnded': 'no target — running until you stop it',
+  'today.toGo': '{time} to go',
+  'today.past': 'target passed by {time}',
+  'today.start': 'START A FAST',
+  'today.end': 'END FAST + LOG',
+  'today.log': 'LOG',
+  'today.stage': 'METABOLIC STAGE',
+
+  /* ── metabolic stages ── */
+  'stage.fed': 'FED',
+  'stage.fed.note': 'Digesting, insulin elevated',
+  'stage.glycogen': 'GLYCOGEN',
+  'stage.glycogen.note': 'Liver stores draining',
+  'stage.fatburn': 'FAT BURN',
+  'stage.fatburn.note': 'Lipolysis ramping, insulin low',
+  'stage.ketosis': 'KETOSIS',
+  'stage.ketosis.note': 'Ketones above 0.5 mmol/L',
+  'stage.autophagy': 'AUTOPHAGY',
+  'stage.autophagy.note': 'Cellular clean-up accelerates',
+
+  /* ── protocols ── */
+  'protocol.pick': 'PICK A PROTOCOL',
+  'protocol.16:8.note': 'Daily window — the common one',
+  'protocol.18:6.note': 'Tighter window, same rhythm',
+  'protocol.20:4.note': 'Warrior window',
+  'protocol.omad.note': 'One meal a day',
+  'protocol.extended.label': 'EXTENDED',
+  'protocol.extended.note': '24 – 72h, staged targets',
+  'protocol.free.label': 'FREE-FORM',
+  'protocol.free.note': 'No target, stop when you stop',
+
+  /* ── logging ── */
+  'log.title': 'LOG',
+  'log.value': 'VALUE',
+  'log.time': 'TIME',
+  'log.now': 'NOW',
+  'log.other': 'OTHER',
+  'log.note': 'NOTE',
+  'log.breaksFast': "You're fasting. This is still recorded and shows on the timeline.",
+  'log.notANumber': "That value isn't a number",
+  'log.missingValue': 'Missing the value in {unit}',
+  'log.empty': 'Nothing logged in this fast yet.',
+  'log.emptyNoFast': 'Start a fast to see logs on its timeline.',
+  'log.backdated': 'logged later',
+
+  /* ── event kinds ── */
+  'event.meal': 'Meal',
+  'event.meal.placeholder': 'What you ate',
+  'event.ketones': 'Ketones',
+  'event.glucose': 'Glucose',
+  'event.weight': 'Weight',
+  'event.water': 'Water',
+  'event.workout': 'Workout',
+  'event.workout.placeholder': 'Kind of workout',
+  'event.mood': 'Feeling',
+  'event.note': 'Note',
+  'event.note.placeholder': 'What you want to remember',
+
+  /* ── feelings ── */
+  'mood.energetic': 'Energetic',
+  'mood.focused': 'Focused',
+  'mood.normal': 'Normal',
+  'mood.hungry': 'Hungry',
+  'mood.tired': 'Tired',
+  'mood.dizzy': 'Light-headed',
+  'mood.irritable': 'Irritable',
+
+  /* ── Journal ── */
+  'journal.today': 'Today',
+  'journal.yesterday': 'Yesterday',
+  'journal.frame.today': 'TODAY',
+  'journal.frame.rolling24h': 'LAST 24H',
+  'journal.frame.rolling48h': 'LAST 48H',
+  'journal.frame.week': '7 DAYS',
+  'journal.frame.month': '30 DAYS',
+  'journal.custom': 'CUSTOM RANGE',
+  'journal.customChange': 'CHANGE RANGE',
+  'journal.customClear': 'CLEAR',
+  'journal.customLabel': 'Custom',
+  'journal.from': 'FROM',
+  'journal.to': 'TO',
+  'journal.apply': 'APPLY',
+  'journal.badRange': 'The end must come after the start',
+  'journal.count': { one: '{count} entry', other: '{count} entries' },
+  'journal.noRecords': 'nothing logged',
+  'journal.fastedInRange': 'fasted in this range',
+  'journal.empty': 'Nothing logged in this range.',
+  'journal.duringFast': 'fasting',
+  'journal.migrated': 'no original time',
+
+  /* ── History ── */
+  'history.last30': 'LAST 30 DAYS',
+  'history.completed': 'fasts completed',
+  'history.average': ' · {time} average',
+  'history.empty': 'No completed fasts yet. Your first one will show up here.',
+
+  /* ── Stats ── */
+  'stats.week': 'THIS WEEK · FASTED HOURS',
+  'stats.sameAsLast': 'same as last week',
+  'stats.vsLast': '{delta} vs last week',
+  'stats.avgFast': 'AVG FAST',
+  'stats.streak': 'STREAK',
+  'stats.streakDays': '{days} D',
+  'stats.longest': 'LONGEST',
+  'stats.daysLogged': 'DAYS LOGGED',
+  'stats.daysLoggedValue': '{days} / 30',
+  'stats.consistency': 'CONSISTENCY',
+  'stats.legend.none': 'none',
+  'stats.legend.under16': '< 16h',
+  'stats.legend.over16': '16h +',
+  'stats.legend.over24': '24h +',
+
+  /* ── start time ── */
+  'fast.startedWhen': 'WHEN DID YOU START?',
+  'fast.startNow': 'Now',
+  'fast.start2h': '2h ago',
+  'fast.start4h': '4h ago',
+  'fast.start8h': '8h ago',
+  'fast.startExact': 'Exact time',
+  'fast.startedAgo': 'started {time} ago',
+  'fast.hours': { one: '{count} hour', other: '{count} hours' },
+  'fast.minutes': { one: '{count} minute', other: '{count} minutes' },
+  'fast.editStart': 'CORRECT THE START',
+  'fast.wouldBe': 'would become',
+  'fast.alreadyComplete': 'With this start the goal is already met. It will still be recorded.',
+  'fast.startInFuture': "The start can't be in the future",
+  'fast.startTooOld': 'More than a week ago — check the date',
+  'fast.startInvalid': "That date isn't valid",
+  'fast.startAfterEnd': "The start can't come after the end",
+
+  /* ── backup ── */
+  'backup.title': 'BACKUP',
+  'backup.why': 'Your data lives only on this device. Export a copy so you don\'t lose it, and to move it to your phone or another computer.',
+  'backup.export': 'EXPORT A COPY',
+  'backup.import': 'IMPORT A COPY',
+  'backup.mergeNote': "Importing adds what's missing. It never deletes what you already have.",
+  'backup.imported': 'Imported',
+  'backup.fastsAdded': { one: '{count} fast added', other: '{count} fasts added' },
+  'backup.eventsAdded': { one: '{count} entry added', other: '{count} entries added' },
+  'backup.skipped': { one: '{count} you already had', other: '{count} you already had' },
+  'backup.activeImported': 'Running fast restored',
+  'backup.activeSkipped': 'The copy had a running fast, but you already have one and yours was kept',
+  'backup.notJson': "That file isn't JSON",
+  'backup.notBackup': "That file isn't a Fastrack backup",
+  'backup.wrongFormat': 'Unrecognised backup format',
+  'backup.tooNew': 'That backup is from a newer version of the app',
+  'backup.exportFailed': "Couldn't export",
+  'backup.importFailed': "Couldn't read the file",
+
+  /* ── device role ── */
+  'role.onlyPrimaryControls': 'Fasts are started and ended on your phone. Here you can log, edit and review.',
+  'role.title': 'THIS DEVICE',
+  'role.primary': 'Primary — runs the fast',
+  'role.secondary': 'Secondary — review and log',
+  'role.explain': 'Only one device starts and ends fasts. Both can log meals, readings and notes.',
+
+  /* ── settings ── */
+  'settings.language': 'LANGUAGE',
+};

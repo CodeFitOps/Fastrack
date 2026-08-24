@@ -6,8 +6,13 @@ import {
   isOpenEnded,
   elapsedMs,
 } from '../core/fastSession.js';
-import { STAGES, stageStatus } from '../core/protocols.js';
-import { useFastTracker } from './useFastTracker.js';
+import { useState } from 'react';
+import { STAGES, stageStatus, protocolLabel, protocolById } from '../core/protocols.js';
+import { useI18n } from '../i18n/LanguageProvider.jsx';
+import { ProtocolSheet } from './ProtocolSheet.jsx';
+import { LogSheet } from './LogSheet.jsx';
+import { EditStartSheet } from './EditStartSheet.jsx';
+import { FastTimeline } from './FastTimeline.jsx';
 
 /**
  * The prototype's screen 1a, ported off the dc-runtime.
@@ -24,10 +29,16 @@ import { useFastTracker } from './useFastTracker.js';
  * color token via var()"). The tokens already exist in styles.css; the
  * prototype simply predated using them.
  */
-export function TodayScreen() {
-  const { session, hydrated, now, isFasting, elapsed, finish } = useFastTracker();
-
-  if (!hydrated) return <div className="today-loading">Loading</div>;
+export function TodayScreen({ tracker }) {
+  const {
+    session, events, now, isFasting, elapsed,
+    begin, changeStart, finish, log, removeEvent,
+    canControl, canEditFast, controlBlockedReason,
+  } = tracker;
+  const [picking, setPicking] = useState(false);
+  const [logging, setLogging] = useState(false);
+  const [editingStart, setEditingStart] = useState(false);
+  const { t, clock } = useI18n();
 
   const openEnded = session ? isOpenEnded(session) : false;
   const pct = session && !openEnded ? progress(session, now) : 0;
@@ -41,9 +52,11 @@ export function TodayScreen() {
     <section className="today">
       <header className="today-head">
         <span className="today-state" style={{ color: stateColor }}>
-          {isFasting ? 'FASTING' : 'EATING WINDOW'}
+          {isFasting ? t('today.fasting') : t('today.eating')}
         </span>
-        <span className="today-proto">{session?.protocolLabel ?? '—'}</span>
+        <span className="today-proto">
+          {session ? protocolLabel(protocolById(session.protocolId) ?? session, t) : t('common.none')}
+        </span>
       </header>
 
       {/* Tabular numerals so the clock does not shift width as digits change. */}
@@ -55,7 +68,7 @@ export function TodayScreen() {
         <strong className="today-pct">
           {openEnded ? '—' : `${Math.round(pct * 100)}%`}
         </strong>
-        <span className="text-muted">{subLine({ session, openEnded, left, over })}</span>
+        <span className="text-muted">{subLine({ session, openEnded, left, over, t })}</span>
       </div>
 
       {/* An open-ended fast has nothing to fill a progress bar against. */}
@@ -74,56 +87,109 @@ export function TodayScreen() {
 
       <dl className="today-times">
         <div>
-          <dt>STARTED</dt>
-          <dd>{session ? clockTime(session.startedAt) : '—'}</dd>
+          <dt>{t('today.started')}</dt>
+          <dd>
+            {isFasting && canEditFast ? (
+              // Pulsable: corregir el inicio es justo lo que hace falta cuando
+              // se cae en la cuenta de que se llevaba más rato ayunando.
+              <button
+                type="button"
+                className="today-edit-start"
+                onClick={() => setEditingStart(true)}
+              >
+                {clock(session.startedAt)}
+              </button>
+            ) : (
+              session ? clock(session.startedAt) : t('common.none')
+            )}
+          </dd>
         </div>
         <div>
-          <dt>{isFasting ? 'TARGET ENDS' : 'LAST FAST'}</dt>
+          <dt>{isFasting ? t('today.targetEnds') : t('today.lastFast')}</dt>
           <dd>
-            {session && !openEnded ? clockTime(session.startedAt + session.targetMs) : '—'}
+            {session && !openEnded ? clock(session.startedAt + session.targetMs) : t('common.none')}
           </dd>
         </div>
       </dl>
 
-      <h6>METABOLIC STAGE</h6>
+      <h6>{t('today.stage')}</h6>
       <ol className="stage-ladder">
         {STAGES.map((stage) => {
           const status = stageStatus(stage, elapsed, isFasting);
           return (
-            <li key={stage.name} className={`stage stage-${status}`}>
+            <li key={stage.id} className={`stage stage-${status}`}>
               <span className="stage-hour">{stage.hoursLabel}</span>
-              <span className="stage-name">{stage.name}</span>
-              <span className="stage-note text-muted">{stage.note}</span>
+              <span className="stage-name">{t(stage.nameKey)}</span>
+              <span className="stage-note text-muted">{t(stage.noteKey)}</span>
             </li>
           );
         })}
       </ol>
 
+      {/* Registrar está disponible siempre, no sólo ayunando: una comida
+          ocurre por definición en la ventana de comer. */}
+      <div className="today-log">
+        <div className="today-log-head">
+          <h6>{t('today.log')}</h6>
+          <button type="button" className="btn btn-ghost" onClick={() => setLogging(true)}>
+            {t('common.add')}
+          </button>
+        </div>
+        {isFasting ? (
+          <FastTimeline session={session} events={events} now={now} onDelete={removeEvent} />
+        ) : (
+          <p className="timeline-empty text-muted">{t('log.emptyNoFast')}</p>
+        )}
+      </div>
+
       <button
         type="button"
         className={isFasting ? 'btn btn-primary btn-block' : 'btn btn-secondary btn-block'}
-        onClick={() => (isFasting ? finish() : null)}
+        disabled={!canControl}
+        onClick={() => (isFasting ? finish() : setPicking(true))}
       >
-        {isFasting ? 'END FAST + LOG' : 'START A FAST'}
+        {isFasting ? t('today.end') : t('today.start')}
       </button>
+
+      {/* Un botón deshabilitado sin explicación parece un fallo. */}
+      {controlBlockedReason && (
+        <p className="role-note text-muted">{t(controlBlockedReason)}</p>
+      )}
+
+      <LogSheet
+        open={logging}
+        isFasting={isFasting}
+        onClose={() => setLogging(false)}
+        onSubmit={log}
+      />
+
+      <EditStartSheet
+        open={editingStart}
+        session={session}
+        onClose={() => setEditingStart(false)}
+        onSubmit={async (ts) => {
+          await changeStart(ts);
+          setEditingStart(false);
+        }}
+      />
+
+      <ProtocolSheet
+        open={picking}
+        onClose={() => setPicking(false)}
+        onPick={async (protocolId, opts) => {
+          await begin(protocolId, opts);
+          setPicking(false);
+        }}
+      />
     </section>
   );
 }
 
-function subLine({ session, openEnded, left, over }) {
-  if (!session) return 'no active fast — pick a protocol to begin';
-  if (openEnded) return 'no target — running until you stop it';
-  if (left > 0) return `${formatDuration(left)} to go`;
-  return `target passed by ${formatDuration(over)}`;
-}
-
-/**
- * Local wall-clock time. Unlike elapsed duration, this is deliberately
- * timezone-aware: a fast started at 20:05 should read 20:05 in whatever zone
- * the person was in, and the stored epoch timestamp is unaffected either way.
- */
-function clockTime(ts) {
-  return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+function subLine({ session, openEnded, left, over, t }) {
+  if (!session) return t('today.noFast');
+  if (openEnded) return t('today.openEnded');
+  if (left > 0) return t('today.toGo', { time: formatDuration(left) });
+  return t('today.past', { time: formatDuration(over) });
 }
 
 export { elapsedMs };

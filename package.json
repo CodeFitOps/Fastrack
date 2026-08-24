@@ -7,7 +7,14 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node --test"
+    "test": "node --test src/core/fastSession.test.js src/core/protocols.test.js src/core/stats.test.js src/core/events.test.js src/core/timeframes.test.js src/core/storage.test.js src/i18n/i18n.test.js src/core/backup.test.js src/core/sync.test.js src/core/roles.test.js",
+    "dev:electron": "concurrently -k \"vite\" \"wait-on tcp:5173 && electron .\"",
+    "build:web": "vite build",
+    "build:mac": "npm run build:web && electron-builder --mac",
+    "android:sync": "npm run build:web && npx cap sync android",
+    "android:open": "npx cap open android",
+    "android:run": "npm run android:sync && npx cap run android",
+    "server": "node server/server.js"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^5.2.0",
@@ -16,5 +23,6 @@
   "dependencies": {
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
-  }
+  },
+  "main": "electron/main.cjs"
 }

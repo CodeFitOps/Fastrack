@@ -38,11 +38,50 @@ export const PROTOCOLS = {
  *
  * @returns {FastSession}
  */
-export function startFast({ targetMs, now = Date.now(), id = cryptoId() }) {
+export function startFast({ targetMs, startedAt, now = Date.now(), id = cryptoId() }) {
   if (targetMs !== null && (!Number.isFinite(targetMs) || targetMs <= 0)) {
     throw new RangeError('targetMs must be a positive number of ms, or null for an open-ended fast');
   }
-  return { id, startedAt: now, targetMs, endedAt: null };
+  const begins = startedAt ?? now;
+  const problem = validateStart(begins, now);
+  if (problem) throw new RangeError(problem);
+  return { id, startedAt: begins, targetMs, endedAt: null };
+}
+
+/** Cuánto atrás se admite fechar el inicio de un ayuno. */
+export const MAX_BACKDATE_MS = 7 * 86_400_000;
+
+/**
+ * Comprueba una hora de inicio propuesta.
+ *
+ * Devuelve una clave de traducción con el problema, o null si vale.
+ *
+ * El futuro se rechaza: un ayuno que empieza dentro de dos horas no es un ayuno
+ * en curso, es un plan, y la app no modela planes. El tope de siete días atrás
+ * está para atajar el error de teclear la fecha mal — un ayuno real de más de
+ * una semana existe, pero es tan raro que es mucho más probable que sea un
+ * dedazo, y un inicio erróneo contamina las estadísticas en silencio.
+ */
+export function validateStart(startedAt, now = Date.now()) {
+  if (!Number.isFinite(startedAt)) return 'fast.startInvalid';
+  if (startedAt > now) return 'fast.startInFuture';
+  if (now - startedAt > MAX_BACKDATE_MS) return 'fast.startTooOld';
+  return null;
+}
+
+/**
+ * Mueve la hora de inicio de un ayuno en curso.
+ *
+ * Devuelve una sesión nueva; no muta. Quien la llame debe reprogramar la alerta
+ * de objetivo, porque el instante en que se cumple ha cambiado.
+ */
+export function adjustStart(session, startedAt, now = Date.now()) {
+  const problem = validateStart(startedAt, now);
+  if (problem) throw new RangeError(problem);
+  if (session.endedAt !== null && startedAt > session.endedAt) {
+    throw new RangeError('fast.startAfterEnd');
+  }
+  return { ...session, startedAt };
 }
 
 /** True when the fast has no goal to reach. */

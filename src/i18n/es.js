@@ -1,0 +1,191 @@
+/**
+ * Catálogo en español.
+ *
+ * Claves agrupadas por pantalla. Las que llevan { one, other } son plurales.
+ * Mantener el mismo juego de claves que en.js — hay un test que lo comprueba.
+ */
+
+export const es = {
+  /* ── general ── */
+  'app.title': 'FAST',
+  'app.loading': 'Cargando',
+  'common.cancel': 'CANCELAR',
+  'common.back': 'ATRÁS',
+  'common.save': 'GUARDAR',
+  'common.add': '+ AÑADIR',
+  'common.delete': 'Borrar {what}',
+  'common.none': '—',
+  'common.optional': '(OPCIONAL)',
+
+  /* ── pestañas ── */
+  'tab.today': 'HOY',
+  'tab.journal': 'DIARIO',
+  'tab.history': 'HISTORIAL',
+  'tab.stats': 'DATOS',
+
+  /* ── Hoy ── */
+  'today.fasting': 'AYUNANDO',
+  'today.eating': 'VENTANA DE COMER',
+  'today.started': 'EMPEZÓ',
+  'today.targetEnds': 'OBJETIVO',
+  'today.lastFast': 'ÚLTIMO AYUNO',
+  'today.noFast': 'sin ayuno activo — elige un protocolo para empezar',
+  'today.openEnded': 'sin objetivo — corre hasta que lo pares',
+  'today.toGo': 'quedan {time}',
+  'today.past': 'objetivo superado en {time}',
+  'today.start': 'EMPEZAR UN AYUNO',
+  'today.end': 'TERMINAR + REGISTRAR',
+  'today.log': 'REGISTRO',
+  'today.stage': 'ETAPA METABÓLICA',
+
+  /* ── etapas metabólicas ── */
+  'stage.fed': 'DIGIRIENDO',
+  'stage.fed.note': 'Digestión en curso, insulina alta',
+  'stage.glycogen': 'GLUCÓGENO',
+  'stage.glycogen.note': 'Reservas del hígado vaciándose',
+  'stage.fatburn': 'GRASA',
+  'stage.fatburn.note': 'Lipólisis subiendo, insulina baja',
+  'stage.ketosis': 'CETOSIS',
+  'stage.ketosis.note': 'Cetonas por encima de 0,5 mmol/L',
+  'stage.autophagy': 'AUTOFAGIA',
+  'stage.autophagy.note': 'La limpieza celular se acelera',
+
+  /* ── protocolos ── */
+  'protocol.pick': 'ELEGIR PROTOCOLO',
+  'protocol.16:8.note': 'Ventana diaria — la más común',
+  'protocol.18:6.note': 'Ventana más corta, mismo ritmo',
+  'protocol.20:4.note': 'Ventana de guerrero',
+  'protocol.omad.note': 'Una comida al día',
+  'protocol.extended.label': 'PROLONGADO',
+  'protocol.extended.note': '24 – 72 h, objetivos por etapas',
+  'protocol.free.label': 'LIBRE',
+  'protocol.free.note': 'Sin objetivo, paras cuando quieras',
+
+  /* ── registro ── */
+  'log.title': 'REGISTRAR',
+  'log.value': 'VALOR',
+  'log.time': 'HORA',
+  'log.now': 'AHORA',
+  'log.other': 'OTRA',
+  'log.note': 'NOTA',
+  'log.breaksFast': 'Estás ayunando. Se registrará igual y saldrá en la línea de tiempo.',
+  'log.notANumber': 'Ese valor no es un número',
+  'log.missingValue': 'Falta el valor en {unit}',
+  'log.empty': 'Sin registros en este ayuno todavía.',
+  'log.emptyNoFast': 'Empieza un ayuno para ver los registros en su línea de tiempo.',
+  'log.backdated': 'anotado después',
+
+  /* ── tipos de evento ── */
+  'event.meal': 'Comida',
+  'event.meal.placeholder': 'Qué comiste',
+  'event.ketones': 'Cetonas',
+  'event.glucose': 'Glucosa',
+  'event.weight': 'Peso',
+  'event.water': 'Agua',
+  'event.workout': 'Entreno',
+  'event.workout.placeholder': 'Tipo de entreno',
+  'event.mood': 'Sensación',
+  'event.note': 'Nota',
+  'event.note.placeholder': 'Qué quieres recordar',
+
+  /* ── sensaciones ── */
+  'mood.energetic': 'Con energía',
+  'mood.focused': 'Enfocado',
+  'mood.normal': 'Normal',
+  'mood.hungry': 'Con hambre',
+  'mood.tired': 'Cansado',
+  'mood.dizzy': 'Mareado',
+  'mood.irritable': 'Irritable',
+
+  /* ── Diario ── */
+  'journal.today': 'Hoy',
+  'journal.yesterday': 'Ayer',
+  'journal.frame.today': 'HOY',
+  'journal.frame.rolling24h': 'ÚLTIMAS 24 H',
+  'journal.frame.rolling48h': 'ÚLTIMAS 48 H',
+  'journal.frame.week': '7 DÍAS',
+  'journal.frame.month': '30 DÍAS',
+  'journal.custom': 'RANGO A MEDIDA',
+  'journal.customChange': 'CAMBIAR RANGO',
+  'journal.customClear': 'QUITAR',
+  'journal.customLabel': 'Personalizado',
+  'journal.from': 'DESDE',
+  'journal.to': 'HASTA',
+  'journal.apply': 'APLICAR',
+  'journal.badRange': 'El final debe ir después del inicio',
+  'journal.count': { one: '{count} registro', other: '{count} registros' },
+  'journal.noRecords': 'sin registros',
+  'journal.fastedInRange': 'ayunadas en este tramo',
+  'journal.empty': 'Nada registrado en este tramo.',
+  'journal.duringFast': 'ayunando',
+  'journal.migrated': 'sin hora original',
+
+  /* ── Historial ── */
+  'history.last30': 'ÚLTIMOS 30 DÍAS',
+  'history.completed': 'ayunos completados',
+  'history.average': ' · {time} de media',
+  'history.empty': 'Aún no hay ayunos completados. El primero aparecerá aquí.',
+
+  /* ── Datos ── */
+  'stats.week': 'ESTA SEMANA · HORAS AYUNADAS',
+  'stats.sameAsLast': 'igual que la semana pasada',
+  'stats.vsLast': '{delta} vs semana pasada',
+  'stats.avgFast': 'AYUNO MEDIO',
+  'stats.streak': 'RACHA',
+  'stats.streakDays': '{days} D',
+  'stats.longest': 'MÁS LARGO',
+  'stats.daysLogged': 'DÍAS CON REGISTRO',
+  'stats.daysLoggedValue': '{days} / 30',
+  'stats.consistency': 'CONSTANCIA',
+  'stats.legend.none': 'nada',
+  'stats.legend.under16': '< 16 h',
+  'stats.legend.over16': '16 h +',
+  'stats.legend.over24': '24 h +',
+
+  /* ── hora de inicio ── */
+  'fast.startedWhen': '¿CUÁNDO EMPEZASTE?',
+  'fast.startNow': 'Ahora',
+  'fast.start2h': 'Hace 2 h',
+  'fast.start4h': 'Hace 4 h',
+  'fast.start8h': 'Hace 8 h',
+  'fast.startExact': 'Hora exacta',
+  'fast.startedAgo': 'empezado hace {time}',
+  'fast.hours': { one: '{count} hora', other: '{count} horas' },
+  'fast.minutes': { one: '{count} minuto', other: '{count} minutos' },
+  'fast.editStart': 'CORREGIR EL INICIO',
+  'fast.wouldBe': 'pasaría a llevar',
+  'fast.alreadyComplete': 'Con este inicio el objetivo ya estaría cumplido. Se registrará igual.',
+  'fast.startInFuture': 'El inicio no puede estar en el futuro',
+  'fast.startTooOld': 'Más de una semana atrás — revisa la fecha',
+  'fast.startInvalid': 'Esa fecha no es válida',
+  'fast.startAfterEnd': 'El inicio no puede ir después del final',
+
+  /* ── copia de seguridad ── */
+  'backup.title': 'COPIA DE SEGURIDAD',
+  'backup.why': 'Tus datos viven sólo en este dispositivo. Exporta una copia para no perderlos y para llevarlos al móvil o a otro ordenador.',
+  'backup.export': 'EXPORTAR COPIA',
+  'backup.import': 'IMPORTAR COPIA',
+  'backup.mergeNote': 'Importar añade lo que falte. No borra nada de lo que ya tengas.',
+  'backup.imported': 'Importado',
+  'backup.fastsAdded': { one: '{count} ayuno añadido', other: '{count} ayunos añadidos' },
+  'backup.eventsAdded': { one: '{count} registro añadido', other: '{count} registros añadidos' },
+  'backup.skipped': { one: '{count} ya lo tenías', other: '{count} ya los tenías' },
+  'backup.activeImported': 'Ayuno en curso recuperado',
+  'backup.activeSkipped': 'La copia traía un ayuno en curso, pero ya tienes uno y se ha respetado el tuyo',
+  'backup.notJson': 'Ese fichero no es JSON',
+  'backup.notBackup': 'Ese fichero no es una copia de Fastrack',
+  'backup.wrongFormat': 'Formato de copia no reconocido',
+  'backup.tooNew': 'La copia es de una versión más nueva de la app',
+  'backup.exportFailed': 'No se pudo exportar',
+  'backup.importFailed': 'No se pudo leer el fichero',
+
+  /* ── papel del dispositivo ── */
+  'role.onlyPrimaryControls': 'Los ayunos se empiezan y se terminan desde el móvil. Aquí puedes registrar, editar y consultar.',
+  'role.title': 'ESTE DISPOSITIVO',
+  'role.primary': 'Principal — lleva el ayuno',
+  'role.secondary': 'Secundario — consulta y registra',
+  'role.explain': 'Sólo un dispositivo empieza y termina ayunos. Los dos pueden registrar comidas, medidas y notas.',
+
+  /* ── ajustes ── */
+  'settings.language': 'IDIOMA',
+};

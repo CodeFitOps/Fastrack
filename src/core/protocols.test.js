@@ -32,8 +32,21 @@ test('display strings are never the source of a duration', () => {
   assert.equal(parseInt(protocolById('extended').hoursLabel, 10), 24); // drops the "+"
 });
 
+test('cada protocolo tiene etiqueta fija o clave de traducción, nunca ninguna', () => {
+  for (const p of PROTOCOLS) {
+    assert.ok(p.label || p.labelKey, `"${p.id}" no tiene forma de mostrarse`);
+    assert.ok(p.noteKey, `"${p.id}" no tiene nota traducible`);
+  }
+});
+
+test('cada etapa tiene id estable y claves de traducción', () => {
+  for (const s of STAGES) {
+    assert.ok(s.id && s.nameKey && s.noteKey, `etapa incompleta: ${JSON.stringify(s)}`);
+  }
+});
+
 test('stages advance from pending to active to done', () => {
-  const ketosis = STAGES.find((s) => s.name === 'KETOSIS');
+  const ketosis = STAGES.find((s) => s.id === 'ketosis');
   assert.equal(stageStatus(ketosis, 10 * H, true), 'pending');
   assert.equal(stageStatus(ketosis, 18 * H, true), 'active');
   assert.equal(stageStatus(ketosis, 30 * H, true), 'done');

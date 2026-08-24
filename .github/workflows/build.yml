@@ -1,0 +1,89 @@
+name: Build
+
+# El reparto de máquinas no es una preferencia: firmar y notarizar una app de
+# macOS necesita `codesign` y `notarytool`, que sólo existen en macOS. Android
+# se construye igual de bien en Ubuntu, que además es más barato en CI.
+#
+# Con esto da igual desde qué portátil trabajes: los dos artefactos salen del
+# mismo commit.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build:web
+
+  android:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      # Capacitor necesita un JDK; el SDK de Android lo instala la acción
+      # siguiente. Ambos vienen preinstalados en los runners de Ubuntu, pero
+      # fijar la versión evita que un cambio del runner rompa el build.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+
+      - run: npm ci
+      - run: npm run android:sync
+
+      # Debug, sin firmar: sirve para instalar en un teléfono de pruebas.
+      # El release firmado necesita el keystore, que NO debe vivir en el
+      # repositorio — ver PACKAGING.md.
+      - name: Build debug APK
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fastrack-debug-apk
+          path: android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+
+  macos:
+    needs: test
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      # Sin secretos configurados el build sigue y sólo omite la notarización,
+      # así que un fork o un PR externo no falla por no tener credenciales.
+      - name: Build macOS app
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          CSC_LINK: ${{ secrets.MAC_CERT_P12 }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
+        run: npm run build:mac
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fastrack-macos-dmg
+          path: release/*.dmg
+          if-no-files-found: error

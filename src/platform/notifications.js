@@ -10,12 +10,14 @@
  */
 
 import { platform } from './storage.js';
+import { loadNative } from './native.js';
 import { goalReachedAt } from '../core/fastSession.js';
 
 const GOAL_NOTIFICATION_ID = 1001;
 
 async function capacitorPlugin() {
-  return (await import(/* @vite-ignore */ '@capacitor/local-notifications')).LocalNotifications;
+  const mod = await loadNative('capacitorNotifications');
+  return mod?.LocalNotifications ?? null;
 }
 
 /**
@@ -34,11 +36,14 @@ async function capacitorPlugin() {
 export async function requestPermission() {
   try {
     if (platform === 'capacitor') {
-      const { display } = await (await capacitorPlugin()).requestPermissions();
+      const plugin = await capacitorPlugin();
+      if (!plugin) return false;
+      const { display } = await plugin.requestPermissions();
       return display === 'granted';
     }
     if (platform === 'tauri') {
-      const m = await import(/* @vite-ignore */ '@tauri-apps/plugin-notification');
+      const m = await loadNative('tauriNotification');
+      if (!m) return false;
       return (await m.isPermissionGranted()) || (await m.requestPermission()) === 'granted';
     }
     if (platform === 'web' && 'Notification' in window) {
@@ -62,7 +67,9 @@ export async function scheduleGoalAlert(session) {
 
   try {
     if (platform === 'capacitor') {
-      await (await capacitorPlugin()).schedule({
+      const plugin = await capacitorPlugin();
+      if (!plugin) return;
+      await plugin.schedule({
         notifications: [{
           id: GOAL_NOTIFICATION_ID,
           title,
@@ -73,7 +80,9 @@ export async function scheduleGoalAlert(session) {
       return;
     }
     if (platform === 'tauri') {
-      const { sendNotification } = await import(/* @vite-ignore */ '@tauri-apps/plugin-notification');
+      const mod = await loadNative('tauriNotification');
+      if (!mod) return;
+      const { sendNotification } = mod;
       // Tauri's notification plugin has no scheduling primitive. On desktop the
       // app is typically running, so a timer is acceptable as a fallback; on
       // Android, back this with a native alarm instead of shipping as-is.
@@ -93,7 +102,8 @@ export async function cancelGoalAlert() {
   fallbackTimer = null;
   try {
     if (platform === 'capacitor') {
-      await (await capacitorPlugin()).cancel({ notifications: [{ id: GOAL_NOTIFICATION_ID }] });
+      const plugin = await capacitorPlugin();
+      await plugin?.cancel({ notifications: [{ id: GOAL_NOTIFICATION_ID }] });
     }
   } catch {
     // Non-fatal.
