@@ -14,7 +14,8 @@
     "android:sync": "npm run build:web && npx cap sync android",
     "android:open": "npx cap open android",
     "android:run": "npm run android:sync && npx cap run android",
-    "server": "node server/server.js"
+    "server": "node server/server.js",
+    "setup": "bash scripts/setup-server.sh"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^5.2.0",
@@ -24,5 +25,8 @@
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   },
-  "main": "electron/main.cjs"
+  "main": "electron/main.cjs",
+  "engines": {
+    "node": ">=22.5"
+  }
 }

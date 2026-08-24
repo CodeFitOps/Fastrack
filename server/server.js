@@ -14,8 +14,29 @@
  */
 
 import { createServer } from 'node:http';
-import { DatabaseSync } from 'node:sqlite';
 import { mergeRecords, changedSince, highWaterMark } from '../src/core/sync.js';
+
+// Comprobación antes de importar node:sqlite. Sin esto, una versión antigua de
+// Node falla con ERR_UNKNOWN_BUILTIN_MODULE y un volcado de pila que no dice
+// qué hacer. `node:sqlite` existe desde la 22.5.
+const [major, minor] = process.versions.node.split('.').map(Number);
+if (major < 22 || (major === 22 && minor < 5)) {
+  console.error(`
+Fastrack necesita Node 22.5 o superior. Tienes ${process.versions.node}.
+
+  node:sqlite, que usa el servidor, no existe en tu versión.
+
+  En Ubuntu:
+    curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+    sudo apt install -y nodejs
+
+  O con nvm, sin tocar el Node del sistema:
+    nvm install 22 && nvm use 22
+`);
+  process.exit(1);
+}
+
+const { DatabaseSync } = await import('node:sqlite');
 
 const PORT = Number(process.env.PORT ?? 8787);
 const DB_PATH = process.env.DB_PATH ?? './fastrack.db';

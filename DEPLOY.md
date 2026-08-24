@@ -22,65 +22,51 @@ git commit -m "Add sync server, sync client and device roles"
 git push
 ```
 
-## 2. En el Ubuntu
+## 2. Node 22.5 o superior
+
+Ubuntu 24 viene con Node 18, que **no sirve**: `node:sqlite` llegó en la 22.5, y
+Vite 7 no funciona por debajo de la 20.19.
+
+```bash
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+sudo apt install -y nodejs
+node -v                         # v22.x
+```
+
+Si prefieres no tocar el Node del sistema, nvm también vale:
+
+```bash
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+nvm install 22 && nvm use 22
+```
+
+> Con nvm, **systemd no encontrará `node`**: el servicio no carga tu perfil de
+> shell. Hay que poner la ruta completa en `ExecStart`, la que devuelva
+> `which node` con la versión ya activa. El script de preparación lo hace solo.
+
+## 3. Preparar el servidor
 
 ```bash
 git clone https://github.com/CodeFitOps/Fastrack.git
 cd Fastrack
-node -v                         # necesita 22 o superior para node:sqlite
+npm run setup
 ```
 
-Prueba que arranca:
+El script comprueba la versión de Node, arranca el servidor contra una base
+temporal, hace un ciclo de sincronización real para confirmar que funciona, y
+genera el fichero de systemd con tus rutas ya rellenadas.
+
+**No instala nada por su cuenta**: escribir en `/etc` requiere sudo, y un script
+que lo hace sin que lo veas es justo lo que no conviene ejecutar a ciegas. Te
+enseña el comando y lo lanzas tú:
 
 ```bash
-DB_PATH=$HOME/fastrack.db node server/server.js
-```
-
-Debe decir `Fastrack sync escuchando en http://127.0.0.1:8787`. En otra terminal:
-
-```bash
-curl localhost:8787/health      # {"ok":true,...}
-```
-
-Para el proceso con Ctrl-C.
-
-## 3. Servicio systemd
-
-Para que sobreviva a reinicios y cierres de sesión:
-
-```bash
-sudo tee /etc/systemd/system/fastrack.service > /dev/null <<'EOF'
-[Unit]
-Description=Fastrack sync
-After=network.target
-
-[Service]
-Type=simple
-User=TU_USUARIO
-WorkingDirectory=/home/TU_USUARIO/Fastrack
-Environment=DB_PATH=/home/TU_USUARIO/fastrack.db
-Environment=PORT=8787
-ExecStart=/usr/bin/node server/server.js
-Restart=always
-RestartSec=5
-
-# Endurecido: el proceso no necesita nada del sistema salvo su base de datos.
-NoNewPrivileges=true
-PrivateTmp=true
-ProtectSystem=strict
-ProtectHome=read-only
-ReadWritePaths=/home/TU_USUARIO/fastrack.db
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
+cat /tmp/fastrack.service                 # revísalo primero
+sudo cp /tmp/fastrack.service /etc/systemd/system/fastrack.service
 sudo systemctl daemon-reload
 sudo systemctl enable --now fastrack
 systemctl status fastrack
 ```
-
-Sustituye `TU_USUARIO` en los cuatro sitios.
 
 ## 4. Cloudflare
 

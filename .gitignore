@@ -6,14 +6,37 @@ dist/
 # Binarios de fuentes: descargar de Google Fonts, no versionar
 public/fonts/*.woff2
 
-# Shells nativos (se generan con `npx cap add` / `tauri init`)
-android/
-ios/
-src-tauri/target/
+# ── DATOS. Nunca al repositorio. ────────────────────────────────────────
+# La base del servidor contiene el historial de ayunos, comidas y medidas.
+# Es información de salud, y este repositorio es público.
+*.db
+*.db-journal
+*.db-wal
+*.sqlite
 
-# Empaquetado
-release/
-build/icon.icns
+# Secretos: token de servicio de Cloudflare, credenciales de Apple, keystore
+# de Android. Perder el keystore impide actualizar la app en Play para siempre,
+# así que guárdalo aparte y con copia — pero nunca aquí.
 .env
+.env.*
 *.keystore
 *.jks
+*.p12
+*.mobileprovision
+
+# ── Generado ────────────────────────────────────────────────────────────
+# `android/` NO se ignora: lleva las ediciones manuales del manifiesto
+# (POST_NOTIFICATIONS, SCHEDULE_EXACT_ALARM). Si se ignorara, un clon en otra
+# máquina compilaría sin permisos y las notificaciones fallarían en silencio.
+android/build/
+android/app/build/
+android/.gradle/
+android/local.properties
+android/app/release/
+
+ios/App/build/
+ios/App/Pods/
+src-tauri/target/
+
+release/
+build/icon.icns
