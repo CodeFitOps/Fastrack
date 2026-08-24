@@ -103,19 +103,24 @@ git pull && npm run build:web && sudo systemctl restart fastrack
 
 ## 4. Cloudflare
 
-Ya tienes túnel, así que es añadir un *public hostname* al que existe:
+### El túnel
 
-1. Zero Trust → Networks → Tunnels → tu túnel → **Public Hostname** → *Add*.
-2. Subdominio `fastrack`, tu dominio, tipo **HTTP**, URL `http://127.0.0.1:8787`.
+Zero Trust → Networks → Tunnels → tu túnel → **Public Hostname** → *Add*:
+
+- Subdominio `fastrack`, tu dominio
+- Tipo **HTTP**, URL `http://127.0.0.1:8787`
 
 > **`127.0.0.1`, no `localhost`.** Si `cloudflared` resuelve `localhost` a IPv6
 > y el servidor escucha en IPv4, obtienes un 502 sin ninguna pista de por qué.
 
-Comprueba desde fuera:
+Comprueba desde fuera de tu red — con los datos del móvil, no por wifi:
 
-```bash
-curl https://fastrack.TUDOMINIO.com/health
 ```
+https://fastrack.TUDOMINIO.com/health
+```
+
+Si devuelve JSON, el túnel va **pero Access todavía no está y tus datos están
+abiertos a internet**. Ponle la política antes de seguir.
 
 ### La política de Access
 
@@ -124,51 +129,72 @@ Zero Trust → Access → Applications → *Add an application* → **Self-hoste
 - Dominio: `fastrack.TUDOMINIO.com`
 - Política: *Allow*, regla **Emails** → tu correo
 
-Vuelve a hacer el `curl` de antes: ahora debe devolver HTML de login en vez de
-JSON. Eso confirma que Access está protegiendo el endpoint.
+Vuelve a abrir `/health`: ahora debe salir la pantalla de login. Entra, y luego:
 
-> Fíjate en que devuelve **HTML con estado 200**, no un 401. Es exactamente la
-> trampa que `syncClient.js` detecta: sin esa comprobación, el cliente parsearía
-> la página de login como si fueran datos.
+```
+https://fastrack.TUDOMINIO.com/whoami
+```
+
+Debe devolver tu email y `viaAccess: true`. Si dice `local`, la cabecera de
+identidad no está llegando y no conviene seguir.
+
+### Mover tus datos al nuevo usuario
+
+Hasta ahora todo se guardó bajo `local`, porque no había identidad. En cuanto
+Access funciona, el servidor te busca por tu email y **la app aparece vacía** —
+los datos están, en otro cajón.
+
+```bash
+cp ~/fastrack.db ~/fastrack.db.bak
+node scripts/migrate-user.mjs local tu@correo.com            # vista previa
+node scripts/migrate-user.mjs local tu@correo.com --apply
+sudo systemctl restart fastrack
+```
+
+Sin `--apply` sólo enseña lo que haría.
+
+### Cerrar la puerta de atrás
+
+Mientras probábamos en la LAN, el servidor quedó escuchando en todas las
+interfaces. Ahora sobra, y es lo único que permitiría llegar **saltándose
+Access**:
+
+```bash
+sudo systemctl edit --full fastrack     # borra la línea Environment=HOST=0.0.0.0
+sudo ufw delete allow in on br0 from 192.168.1.0/24 to any port 8787 proto tcp
+sudo systemctl restart fastrack
+journalctl -u fastrack -n 5 --no-pager  # debe decir 127.0.0.1, sin el AVISO
+```
+
+A partir de aquí sólo se entra por el túnel, y el túnel exige identificarse.
+
+### Multiusuario
+
+Ya funciona: el servidor separa los datos por el email del JWT de Access, así
+que añadir a alguien es añadir su correo a la política. Cada uno ve sólo lo
+suyo, sin tocar código.
+
+Lo que **no** hay es nada compartido entre usuarios — ni ver los ayunos de otro,
+ni datos comunes. Si algún día hiciera falta, es trabajo aparte.
 
 ### El móvil: service token
 
-El login interactivo de Access no funciona bien dentro de un WebView — varios
-proveedores de identidad bloquean OAuth en webviews embebidos. Para el APK:
+El login interactivo de Access no funciona bien dentro de un WebView: varios
+proveedores de identidad bloquean OAuth en webviews embebidos. Sólo hace falta
+para el APK; en el navegador del móvil el login normal funciona.
 
 1. Zero Trust → Access → **Service Auth** → *Create Service Token*. Guarda el
-   Client ID y el Client Secret; el secreto sólo se enseña una vez.
-2. En la política de la aplicación añade una regla *Service Auth* → **Service
+   Client ID y el Secret; el secreto se enseña una sola vez.
+2. En la política de la aplicación, añade una regla *Service Auth* → **Service
    Token** → el que acabas de crear.
-3. El APK manda las cabeceras `CF-Access-Client-Id` y `CF-Access-Client-Secret`.
+3. El APK manda `CF-Access-Client-Id` y `CF-Access-Client-Secret`.
 
-**Sabiendo que**: ese secreto viaja dentro del APK y un APK se puede
-descompilar. Para uso personal es asumible; si algún día repartes la app, no lo
-es, y habría que pasar al navegador del sistema para el login.
+**Sabiendo que** ese secreto viaja dentro del APK, y un APK se descompila. Para
+uso personal es asumible; si repartes la app, no lo es.
 
-### CORS
-
-La app y el servidor están en puertos distintos durante el desarrollo (5173 y
-8787), lo que para el navegador son orígenes distintos. El servidor refleja
-automáticamente los orígenes locales — `localhost`, `127.0.0.1` y los rangos
-privados `192.168.x.x`, `10.x.x.x`, `172.16-31.x.x` — así que en la LAN no hay
-que configurar nada.
-
-**Con Cloudflare sí**, porque tu dominio no es una dirección privada:
-
-```
-Environment=ALLOWED_ORIGINS=https://fastrack.TUDOMINIO.com
-```
-
-en la unidad de systemd, y `sudo systemctl restart fastrack`.
-
-Sólo se reflejan orígenes conocidos, nunca cualquiera: como la app manda las
-cookies de Access con `credentials: 'include'`, responder `*` está prohibido por
-el propio navegador, y reflejar cualquier origen dejaría que otra web abierta en
-tu navegador hablara con el servidor.
-
-> Síntoma típico: `curl` funciona pero la app dice que no llega. `curl` no
-> aplica la política de orígenes del navegador; si uno va y el otro no, es CORS.
+> Un service token no lleva email, así que sus peticiones caerán en el usuario
+> por defecto. Para que el móvil vea tus datos, arranca el servicio con
+> `Environment=DEFAULT_USER=tu@correo.com`.
 
 ## 5. Configurar los dispositivos
 

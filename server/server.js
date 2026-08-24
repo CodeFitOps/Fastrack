@@ -282,6 +282,24 @@ const server = createServer(async (req, res) => {
     return send(200, { ok: true, time: Date.now() });
   }
 
+  /**
+   * Qué identidad ve el servidor.
+   *
+   * Sirve para comprobar que Access está inyectando la cabecera. Si devuelve
+   * `local`, la petición NO ha pasado por Access — o el túnel no está delante,
+   * o se está llegando por la red local saltándoselo.
+   *
+   * No expone nada que quien pregunta no sepa ya: es su propia identidad.
+   */
+  if (req.method === 'GET' && req.url === '/whoami') {
+    const userId = userIdFrom(req);
+    return send(200, {
+      userId,
+      viaAccess: userId !== (process.env.DEFAULT_USER ?? 'local'),
+      records: db.prepare('SELECT COUNT(*) AS n FROM records WHERE user_id = ?').get(userId).n,
+    });
+  }
+
   if (req.method !== 'POST' || req.url !== '/sync') {
     // Todo lo que no sea la API es la app, si está compilada.
     if (SERVE_APP && req.method === 'GET' && (await serveStatic(req, res))) return undefined;
