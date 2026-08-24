@@ -8,7 +8,8 @@ import { syncOnce, startSyncLoop, SYNC_STATE } from '../platform/syncClient.js';
  * eso la app se comporta exactamente como hasta ahora: local y sin red.
  */
 export function useSync({ device, onApplied }) {
-  const [state, setState] = useState(SYNC_STATE.idle);
+  // Arranca en 'disabled': hasta que se confirme lo contrario, la app es local.
+  const [state, setState] = useState(SYNC_STATE.disabled);
   const [lastRun, setLastRun] = useState(null);
   const [lastError, setLastError] = useState(null);
   const applied = useRef(onApplied);
@@ -27,7 +28,7 @@ export function useSync({ device, onApplied }) {
 
   useEffect(() => {
     if (!enabled) {
-      setState(SYNC_STATE.idle);
+      setState(SYNC_STATE.disabled);
       return undefined;
     }
     return startSyncLoop({ intervalMs: 30_000, onResult: handle });

@@ -30,6 +30,8 @@ import { mergeRecords, changedSince, visible } from '../core/sync.js';
 
 /** Estados que la interfaz puede mostrar. */
 export const SYNC_STATE = {
+  /** Sincronización apagada. Distinto de 'idle': ahí está encendida y al día. */
+  disabled: 'disabled',
   idle: 'idle',
   syncing: 'syncing',
   offline: 'offline',
@@ -45,7 +47,7 @@ export const SYNC_STATE = {
 export async function syncOnce({ fetchImpl = fetch } = {}) {
   const settings = await loadDeviceSettings();
   if (!settings.syncEnabled || !settings.serverUrl) {
-    return { state: SYNC_STATE.idle };
+    return { state: SYNC_STATE.disabled };
   }
 
   const since = settings.lastSyncedAt ?? 0;

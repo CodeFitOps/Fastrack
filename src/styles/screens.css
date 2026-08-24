@@ -1125,6 +1125,11 @@
 }
 
 .sync-dot-idle { background: var(--color-text); }
+/* Apagada: hueco, no relleno. Se distingue de un vistazo de "al día". */
+.sync-dot-disabled {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--color-neutral-500);
+}
 .sync-dot-syncing { background: var(--color-accent); animation: sync-pulse 1s ease-in-out infinite; }
 .sync-dot-offline { background: var(--color-neutral-400); }
 .sync-dot-unauthenticated { background: var(--color-accent-400); }

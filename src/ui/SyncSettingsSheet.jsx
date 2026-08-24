@@ -157,6 +157,16 @@ export function SyncSettingsSheet({ open, device, onClose, onSave, syncState, la
             <p className="sync-hint text-muted">{t('sync.onlyOnePrimary')}</p>
           )}
 
+          {/* Explica por qué, con la sincronización apagada, este dispositivo
+              puede empezar ayunos aunque esté marcado como secundario. */}
+          {!enabled && (
+            <p className="sync-hint text-muted">{t('sync.disabledMeansFullControl')}</p>
+          )}
+
+          {enabled && role === ROLES.secondary && (
+            <p className="sync-hint text-muted">{t('sync.secondaryMeans')}</p>
+          )}
+
           <button type="button" className="btn btn-primary btn-block" onClick={save}>
             {t('common.save')}
           </button>
