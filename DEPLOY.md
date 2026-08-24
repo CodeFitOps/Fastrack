@@ -110,6 +110,30 @@ proveedores de identidad bloquean OAuth en webviews embebidos. Para el APK:
 descompilar. Para uso personal es asumible; si algún día repartes la app, no lo
 es, y habría que pasar al navegador del sistema para el login.
 
+### CORS
+
+La app y el servidor están en puertos distintos durante el desarrollo (5173 y
+8787), lo que para el navegador son orígenes distintos. El servidor refleja
+automáticamente los orígenes locales — `localhost`, `127.0.0.1` y los rangos
+privados `192.168.x.x`, `10.x.x.x`, `172.16-31.x.x` — así que en la LAN no hay
+que configurar nada.
+
+**Con Cloudflare sí**, porque tu dominio no es una dirección privada:
+
+```
+Environment=ALLOWED_ORIGINS=https://fastrack.TUDOMINIO.com
+```
+
+en la unidad de systemd, y `sudo systemctl restart fastrack`.
+
+Sólo se reflejan orígenes conocidos, nunca cualquiera: como la app manda las
+cookies de Access con `credentials: 'include'`, responder `*` está prohibido por
+el propio navegador, y reflejar cualquier origen dejaría que otra web abierta en
+tu navegador hablara con el servidor.
+
+> Síntoma típico: `curl` funciona pero la app dice que no llega. `curl` no
+> aplica la política de orígenes del navegador; si uno va y el otro no, es CORS.
+
 ## 5. Configurar los dispositivos
 
 En cada uno, ajustes de sincronización:

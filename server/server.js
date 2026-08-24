@@ -145,7 +145,64 @@ function sync(userId, { since = 0, events = [], sessions = [], activeFast = null
   };
 }
 
+/**
+ * CORS.
+ *
+ * En desarrollo la app se sirve desde Vite (puerto 5173) y el servidor está en
+ * el 8787: orígenes distintos, así que el navegador exige estas cabeceras. Con
+ * curl no hacen falta —curl no aplica la política del navegador— y por eso un
+ * `curl /health` puede funcionar mientras la app falla.
+ *
+ * Como se usa `credentials: 'include'` para las cookies de Access, NO se puede
+ * responder `*`: hay que reflejar el origen concreto. Reflejar cualquiera sería
+ * dejar que cualquier web abierta en tu navegador hablara con el servidor, así
+ * que sólo se reflejan orígenes locales, o los que se declaren a mano.
+ *
+ *   ALLOWED_ORIGINS=https://fastrack.midominio.com,https://otra.com
+ */
+const EXTRA_ORIGINS = (process.env.ALLOWED_ORIGINS ?? '')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
+
+function isAllowedOrigin(origin) {
+  if (!origin) return false;
+  if (EXTRA_ORIGINS.includes(origin)) return true;
+  try {
+    const { hostname, protocol } = new URL(origin);
+    if (protocol !== 'http:' && protocol !== 'https:') return false;
+    if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1') return true;
+    // Rangos privados: 192.168.x.x, 10.x.x.x, 172.16-31.x.x
+    if (/^192\.168\.\d{1,3}\.\d{1,3}$/.test(hostname)) return true;
+    if (/^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname)) return true;
+    if (/^172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}$/.test(hostname)) return true;
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+function applyCors(req, res) {
+  const origin = req.headers.origin;
+  if (!isAllowedOrigin(origin)) return;
+  res.setHeader('access-control-allow-origin', origin);
+  res.setHeader('access-control-allow-credentials', 'true');
+  res.setHeader('access-control-allow-methods', 'GET, POST, OPTIONS');
+  res.setHeader('access-control-allow-headers', 'content-type');
+  // Sin esto, una respuesta cacheada para un origen se serviría a otro.
+  res.setHeader('vary', 'Origin');
+}
+
 const server = createServer(async (req, res) => {
+  applyCors(req, res);
+
+  // El navegador manda un OPTIONS antes del POST con content-type JSON.
+  // Sin responderlo, la petición real ni se llega a intentar.
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204);
+    return res.end();
+  }
+
   const send = (code, body) => {
     res.writeHead(code, {
       'content-type': 'application/json',
