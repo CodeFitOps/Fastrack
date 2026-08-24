@@ -37,12 +37,15 @@ import {
  * of elapsed time — that is always derived from the stored startedAt — so a
  * missed tick while the app is backgrounded costs nothing but a stale pixel.
  */
-export function useFastTracker() {
+export function useFastTracker({ onLocalWrite } = {}) {
   const [session, setSession] = useState(null);
   const [history, setHistory] = useState([]);
   const [events, setEvents] = useState([]);
   const [hydrated, setHydrated] = useState(false);
   const [device, setDevice] = useState({ role: 'primary', syncEnabled: false });
+  // Se guarda en una ref para que cambiarlo no reinicie los callbacks.
+  const notifyWrite = useRef(onLocalWrite);
+  notifyWrite.current = onLocalWrite;
   const [now, setNow] = useState(() => Date.now());
   const tick = useRef(null);
 
@@ -112,6 +115,7 @@ export function useFastTracker() {
     if (!isOpenEnded(next) && !isComplete(next) && (await requestPermission())) {
       await scheduleGoalAlert(next);
     }
+    notifyWrite.current?.();
     return next;
   }, []);
 
@@ -135,6 +139,7 @@ export function useFastTracker() {
     if (!isOpenEnded(moved) && !isComplete(moved)) {
       await scheduleGoalAlert(moved);
     }
+    notifyWrite.current?.();
     return moved;
   }, [session, device]);
 
@@ -146,6 +151,7 @@ export function useFastTracker() {
     setHistory(await appendToHistory(done));
     await clearActiveFast();
     setSession(null);
+    notifyWrite.current?.();
     return done;
   }, [session]);
 
@@ -156,15 +162,18 @@ export function useFastTracker() {
   const log = useCallback(async (fields) => {
     const event = createEvent({ ...fields, sessionId: session?.id ?? null });
     setEvents(await appendEvent(event));
+    notifyWrite.current?.();
     return event;
   }, [session]);
 
   const editEvent = useCallback(async (id, patch) => {
     setEvents(await updateEvent(id, patch));
+    notifyWrite.current?.();
   }, []);
 
   const removeEvent = useCallback(async (id) => {
     setEvents(await deleteEvent(id));
+    notifyWrite.current?.();
   }, []);
 
   /** Recarga todo desde almacenamiento. Se usa tras importar una copia. */

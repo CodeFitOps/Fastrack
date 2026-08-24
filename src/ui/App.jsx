@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useFastTracker } from './useFastTracker.js';
 import { TodayScreen } from './TodayScreen.jsx';
 import { HistoryScreen } from './HistoryScreen.jsx';
@@ -27,9 +27,14 @@ export function App() {
   const [tab, setTab] = useState('today');
   const [backupOpen, setBackupOpen] = useState(false);
   const [syncOpen, setSyncOpen] = useState(false);
-  const tracker = useFastTracker();
+  // tracker y sync se necesitan mutuamente: el tracker avisa de escrituras
+  // locales, y sync recarga el tracker cuando llegan cambios de fuera. La ref
+  // rompe el ciclo sin reordenar nada.
+  const syncRef = useRef(null);
+  const tracker = useFastTracker({ onLocalWrite: () => syncRef.current?.() });
   const { t } = useI18n();
   const sync = useSync({ device: tracker.device, onApplied: tracker.reload });
+  syncRef.current = sync.pushSoon;
 
   /**
    * Atrás: primero cierra la capa de más arriba (una hoja abierta), si no

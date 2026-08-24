@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { syncOnce, startSyncLoop, SYNC_STATE } from '../platform/syncClient.js';
+import { syncOnce, startSyncLoop, syncSoon, SYNC_STATE } from '../platform/syncClient.js';
 
 /**
  * Gobierna el ciclo de sincronización.
@@ -42,7 +42,17 @@ export function useSync({ device, onApplied }) {
     return result;
   }, [handle]);
 
-  return { state, lastRun, lastError, syncNow, enabled };
+  /**
+   * Empuja lo que se acabe de escribir, sin esperar al siguiente ciclo.
+   * No hace nada si la sincronización está apagada.
+   */
+  const pushSoon = useCallback(() => {
+    if (!enabled) return;
+    setState(SYNC_STATE.syncing);
+    syncSoon({ onResult: handle });
+  }, [enabled, handle]);
+
+  return { state, lastRun, lastError, syncNow, pushSoon, enabled };
 }
 
 export { SYNC_STATE };

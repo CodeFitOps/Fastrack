@@ -172,7 +172,17 @@ export function startSyncLoop({ intervalMs = 30_000, onResult } = {}) {
 
   const onVisibility = () => (document.hidden ? pause() : start());
   document.addEventListener('visibilitychange', onVisibility);
+
+  // `online` no es de fiar en móvil: hay navegadores que no lo emiten al salir
+  // del modo avión. Está por si acaso, no como único mecanismo.
   window.addEventListener('online', tick);
+
+  // Un navegador móvil puede restaurar la página desde la caché de
+  // retroceso/avance sin emitir `visibilitychange`. Sin esto, volver a la app
+  // desde el conmutador de tareas puede no disparar ningún ciclo.
+  const onPageShow = () => start();
+  window.addEventListener('pageshow', onPageShow);
+  window.addEventListener('focus', onPageShow);
 
   start();
 
@@ -181,5 +191,28 @@ export function startSyncLoop({ intervalMs = 30_000, onResult } = {}) {
     pause();
     document.removeEventListener('visibilitychange', onVisibility);
     window.removeEventListener('online', tick);
+    window.removeEventListener('pageshow', onPageShow);
+    window.removeEventListener('focus', onPageShow);
   };
+}
+
+/**
+ * Empuje inmediato tras una escritura local.
+ *
+ * Sin esto, registrar una comida esperaba hasta treinta segundos antes de
+ * subirla, y en el otro dispositivo otros treinta para verla: hasta un minuto
+ * para algo que el usuario acaba de hacer. Se agrupa en una ventana corta para
+ * que registrar tres cosas seguidas no lance tres ciclos.
+ */
+let pushTimer = null;
+
+export function syncSoon({ delayMs = 1200, onResult } = {}) {
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(async () => {
+    try {
+      onResult?.(await syncOnce());
+    } catch {
+      onResult?.({ state: SYNC_STATE.error });
+    }
+  }, delayMs);
 }
