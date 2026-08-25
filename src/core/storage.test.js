@@ -185,3 +185,19 @@ test('un ayuno vivo que llega del servidor sí se adopta', async () => {
   assert.ok(back);
   assert.equal(back.id, s.id);
 });
+
+test('un ayuno terminado se marca con la hora de escritura, no la de inicio', async () => {
+  // Sin esto, un 16:8 terminado ahora se ordenaba como escrito dieciséis horas
+  // antes, quedaba por detrás de la marca de agua y no se enviaba nunca. El
+  // otro dispositivo no lo veía jamás.
+  const { changedSince } = await import('./sync.js');
+  const inicio = Date.now() - 16 * H;
+  await storage.appendToHistory({ id: 'f1', startedAt: inicio, endedAt: Date.now() });
+
+  const history = await storage.loadHistory();
+  assert.ok(history[0].updatedAt != null, 'debe llevar updatedAt');
+  assert.ok(history[0].updatedAt > inicio, 'y ser posterior al inicio del ayuno');
+
+  // Con una marca de agua de hace un minuto, debe seguir considerándose nuevo.
+  assert.equal(changedSince(history, Date.now() - 60_000).length, 1);
+});

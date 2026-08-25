@@ -23,7 +23,7 @@ const KEY_EVENTS = 'fastrack.events';
 const KEY_SCHEMA = 'fastrack.schemaVersion';
 const KEY_DEVICE = 'fastrack.device';
 
-const SCHEMA_VERSION = 3; // 3 = borrado lógico y metadatos de sincronización
+const SCHEMA_VERSION = 4; // 4 = repara historial sin updatedAt (no se sincronizaba)
 
 function detectPlatform() {
   if (typeof window === 'undefined') return 'memory';
@@ -179,9 +179,18 @@ export async function loadHistory() {
   }
 }
 
+/**
+ * Añade un ayuno terminado al historial.
+ *
+ * `touch()` no es opcional: sin `updatedAt`, la sincronización ordena el ayuno
+ * por su hora de INICIO. Un 16:8 terminado ahora se ordenaría como de hace
+ * dieciséis horas, quedaría por detrás de la marca de agua, y `changedSince`
+ * concluiría que no es novedad. El ayuno no se enviaba nunca y el otro
+ * dispositivo no lo veía jamás en el historial ni en el diario.
+ */
 export async function appendToHistory(session) {
   const history = await loadHistory();
-  history.push(session);
+  history.push(touch(session));
   await backend.set(KEY_HISTORY, JSON.stringify(history));
   return history;
 }
@@ -284,8 +293,43 @@ export async function migrateIfNeeded() {
   const stampedHistory = stampExisting(history);
   await backend.set(KEY_HISTORY, JSON.stringify(stampedHistory));
 
+  await repairMissingTimestamps();
+
   await backend.set(KEY_SCHEMA, String(SCHEMA_VERSION));
   return { migrated: true, created: created.length };
+}
+
+/**
+ * Esquema 4: repara los registros guardados sin `updatedAt`.
+ *
+ * `appendToHistory` no marcaba la hora de escritura, así que un ayuno terminado
+ * se ordenaba por su hora de INICIO. Un 16:8 acabado hace un minuto figuraba
+ * como escrito dieciséis horas antes, quedaba por detrás de la marca de agua, y
+ * no se enviaba nunca. En el otro dispositivo no aparecía jamás.
+ *
+ * Se marcan con la hora actual, no con la del ayuno: lo que hace falta es que
+ * superen la marca de agua para que se envíen una vez. Además se pone el cursor
+ * a cero, de modo que el siguiente ciclo suba todo lo pendiente.
+ */
+async function repairMissingTimestamps() {
+  // Poner el cursor a cero, sin condiciones.
+  //
+  // Se intentó primero rellenar sólo los `updatedAt` que faltaran, pero no
+  // bastaba: la marca que se les asignaba era la hora de FIN del ayuno, que en
+  // un ayuno recién terminado sigue siendo anterior a la marca de agua. El
+  // registro quedaba igual de invisible.
+  //
+  // Reiniciar el cursor fuerza un envío completo en el siguiente ciclo, y eso
+  // arregla todos los casos de una vez. Es barato porque la fusión es
+  // idempotente: reenviar lo que el servidor ya tiene no duplica nada.
+  try {
+    const raw = await backend.get(KEY_DEVICE);
+    const settings = raw ? JSON.parse(raw) : {};
+    await backend.set(KEY_DEVICE, JSON.stringify({ ...settings, lastSyncedAt: 0 }));
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /**
