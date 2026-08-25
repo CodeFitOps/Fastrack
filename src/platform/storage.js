@@ -22,6 +22,7 @@ const KEY_HISTORY = 'fastrack.history';
 const KEY_EVENTS = 'fastrack.events';
 const KEY_SCHEMA = 'fastrack.schemaVersion';
 const KEY_DEVICE = 'fastrack.device';
+const KEY_DEVICE_ID = 'fastrack.deviceId';
 
 const SCHEMA_VERSION = 4; // 4 = repara historial sin updatedAt (no se sincronizaba)
 
@@ -392,18 +393,69 @@ export async function restoreMerged({ activeFast, history, events }) {
  * datos, el móvil y el portátil acabarían con el mismo papel y uno de los dos
  * quedaría sin poder llevar el ayuno.
  */
+/**
+ * Identificador estable de este dispositivo.
+ *
+ * Hace falta para que el servidor sepa cuál es el principal. Se genera una vez
+ * y no se sincroniza: es propiedad del aparato, no del usuario.
+ */
+export async function deviceId() {
+  let id = null;
+  try {
+    id = await backend.get(KEY_DEVICE_ID);
+  } catch {
+    id = null;
+  }
+  if (id) return id;
+
+  const nuevo = typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `dev_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+  await backend.set(KEY_DEVICE_ID, nuevo);
+  return nuevo;
+}
+
+/**
+ * Dirección del servidor por defecto.
+ *
+ * La app se sirve desde el mismo proceso que la API, así que su propio origen
+ * es la respuesta correcta y no hay nada que teclear. En una app empaquetada el
+ * origen es interno (`capacitor://localhost`) y no sirve: ahí sí hay que
+ * indicarla a mano.
+ */
+function defaultServerUrl() {
+  if (platform === 'capacitor' || platform === 'tauri' || platform === 'memory') return '';
+  try {
+    const { origin, protocol } = window.location;
+    return protocol === 'http:' || protocol === 'https:' ? origin : '';
+  } catch {
+    return '';
+  }
+}
+
 export async function loadDeviceSettings() {
   try {
     const raw = await backend.get(KEY_DEVICE);
     const parsed = raw ? JSON.parse(raw) : {};
     return {
       role: parsed.role ?? defaultRole(platform),
-      syncEnabled: parsed.syncEnabled === true,
-      serverUrl: typeof parsed.serverUrl === 'string' ? parsed.serverUrl : '',
+      // Activada por defecto cuando hay un origen del que tirar: la app se
+      // sirve desde el servidor, así que sincronizar es lo esperado.
+      syncEnabled: parsed.syncEnabled ?? Boolean(defaultServerUrl()),
+      // Una cadena vacía guardada significa «usa el origen», no «sin servidor».
+      serverUrl: parsed.serverUrl || defaultServerUrl(),
       lastSyncedAt: Number.isFinite(parsed.lastSyncedAt) ? parsed.lastSyncedAt : 0,
+      // Cursor de descarga: secuencia asignada por el servidor.
+      lastSyncedSeq: Number.isFinite(parsed.lastSyncedSeq) ? parsed.lastSyncedSeq : 0,
     };
   } catch {
-    return { role: defaultRole(platform), syncEnabled: false, serverUrl: '', lastSyncedAt: 0 };
+    return {
+      role: defaultRole(platform),
+      syncEnabled: Boolean(defaultServerUrl()),
+      serverUrl: defaultServerUrl(),
+      lastSyncedAt: 0,
+      lastSyncedSeq: 0,
+    };
   }
 }
 

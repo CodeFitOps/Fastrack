@@ -24,6 +24,7 @@ import {
   loadActiveFastRaw,
   loadDeviceSettings,
   saveDeviceSettings,
+  deviceId,
   restoreMerged,
 } from './storage.js';
 import { mergeRecords, changedSince, visible } from '../core/sync.js';
@@ -44,13 +45,17 @@ export const SYNC_STATE = {
  *
  * @returns {Promise<{state: string, applied?: number, cursor?: number}>}
  */
-export async function syncOnce({ fetchImpl = fetch } = {}) {
+export async function syncOnce({ fetchImpl = fetch, claimPrimary = false } = {}) {
   const settings = await loadDeviceSettings();
   if (!settings.syncEnabled || !settings.serverUrl) {
     return { state: SYNC_STATE.disabled };
   }
 
+  // Se sigue enviando todo lo escrito localmente (por hora local) pero el
+  // cursor de DESCARGA es la secuencia del servidor: inmune a que el reloj de
+  // este dispositivo vaya adelantado respecto a los demás.
   const since = settings.lastSyncedAt ?? 0;
+  const sinceSeq = Number.isFinite(settings.lastSyncedSeq) ? settings.lastSyncedSeq : 0;
   const [events, history, activeFast] = await Promise.all([
     loadEventsRaw(),
     loadHistory(),
@@ -59,6 +64,7 @@ export async function syncOnce({ fetchImpl = fetch } = {}) {
     loadActiveFastRaw(),
   ]);
 
+  const id = await deviceId();
   const url = new URL('/sync', settings.serverUrl).toString();
   let res;
   try {
@@ -69,9 +75,16 @@ export async function syncOnce({ fetchImpl = fetch } = {}) {
       credentials: 'include',
       body: JSON.stringify({
         since,
+        sinceSeq,
         events: changedSince(events, since),
         sessions: changedSince(history, since),
-        activeFast,
+        // Un secundario NO envía su ranura de ayuno: no es suya. Si la enviara,
+        // una copia vieja o terminada podría pisar en el servidor el ayuno vivo
+        // del principal, y los dos dispositivos quedarían viendo cosas
+        // distintas sin forma de reconciliarse.
+        activeFast: settings.role === 'primary' ? activeFast : null,
+        deviceId: id,
+        claimPrimary,
       }),
     });
   } catch {
@@ -105,11 +118,17 @@ export async function syncOnce({ fetchImpl = fetch } = {}) {
   const mergedEvents = mergeRecords(events, payload.events);
   const mergedHistory = mergeRecords(history, payload.sessions ?? []);
 
+  // El papel lo decide el servidor: el primer dispositivo que aparece es el
+  // principal. Se guarda en local sólo para que la interfaz sepa qué mostrar.
+  const role = payload.role === 'primary' || payload.role === 'secondary'
+    ? payload.role
+    : settings.role;
+
   // El ayuno en curso sólo lo escribe el principal. Un secundario acepta el del
   // servidor; el principal se queda con el suyo, que es la fuente.
   const incomingActive = payload.activeFast ?? null;
   let nextActive = activeFast;
-  if (settings.role !== 'primary') {
+  if (role !== 'primary') {
     nextActive = incomingActive;
   } else if (incomingActive && (incomingActive.updatedAt ?? 0) > (activeFast?.updatedAt ?? 0)) {
     nextActive = incomingActive;
@@ -121,13 +140,21 @@ export async function syncOnce({ fetchImpl = fetch } = {}) {
     events: mergedEvents,
   });
 
-  const cursor = Number.isFinite(payload.cursor) ? payload.cursor : since;
-  await saveDeviceSettings({ lastSyncedAt: cursor });
+  // `cursor` ahora es una secuencia del servidor, no una hora. Se guarda
+  // aparte; `lastSyncedAt` sigue marcando qué se ha subido desde aquí.
+  const nextSeq = Number.isFinite(payload.cursor) ? payload.cursor : sinceSeq;
+  await saveDeviceSettings({
+    lastSyncedSeq: nextSeq,
+    lastSyncedAt: Number.isFinite(payload.serverTime) ? payload.serverTime : Date.now(),
+    role,
+  });
 
   return {
     state: SYNC_STATE.idle,
     applied: payload.events.length + (payload.sessions?.length ?? 0),
-    cursor,
+    cursor: nextSeq,
+    role,
+    roleChanged: role !== settings.role,
     activeFastChanged: (nextActive?.updatedAt ?? 0) !== (activeFast?.updatedAt ?? 0),
     visibleEvents: visible(mergedEvents).length,
   };

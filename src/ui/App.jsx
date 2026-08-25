@@ -101,6 +101,10 @@ export function App() {
         onSyncNow={sync.syncNow}
         onClose={() => setSyncOpen(false)}
         onSave={tracker.updateDevice}
+        onClaimPrimary={async () => {
+          await sync.claimPrimary();
+          await tracker.reload();
+        }}
       />
 
       <BackupSheet

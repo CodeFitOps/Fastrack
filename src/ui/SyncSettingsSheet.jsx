@@ -11,10 +11,9 @@ import { useI18n } from '../i18n/LanguageProvider.jsx';
  * descubrirlo media hora después, cuando faltan datos en el otro dispositivo,
  * es mucho peor que un botón de comprobar.
  */
-export function SyncSettingsSheet({ open, device, onClose, onSave, syncState, lastRun, onSyncNow }) {
+export function SyncSettingsSheet({ open, device, onClose, onSave, syncState, lastRun, onSyncNow, onClaimPrimary }) {
   const { t, clock } = useI18n();
   const [url, setUrl] = useState('');
-  const [role, setRole] = useState(ROLES.secondary);
   const [enabled, setEnabled] = useState(false);
   const [probe, setProbe] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -24,7 +23,6 @@ export function SyncSettingsSheet({ open, device, onClose, onSave, syncState, la
   useEffect(() => {
     if (!open || !device) return;
     setUrl(device.serverUrl ?? '');
-    setRole(device.role ?? ROLES.secondary);
     setEnabled(Boolean(device.syncEnabled));
     setProbe(null);
   }, [open, device]);
@@ -58,7 +56,8 @@ export function SyncSettingsSheet({ open, device, onClose, onSave, syncState, la
   };
 
   const save = async () => {
-    await onSave({ serverUrl: normalise(url), role, syncEnabled: enabled });
+    // El papel no se envía: lo decide el servidor.
+    await onSave({ serverUrl: normalise(url), syncEnabled: enabled });
     onClose();
   };
 
@@ -97,7 +96,7 @@ export function SyncSettingsSheet({ open, device, onClose, onSave, syncState, la
               autoCapitalize="off"
               autoCorrect="off"
               spellCheck="false"
-              placeholder="https://fastrack.tudominio.com"
+              placeholder={t('sync.urlAuto')}
               value={url}
               onChange={(e) => setUrl(e.target.value)}
             />
@@ -118,27 +117,31 @@ export function SyncSettingsSheet({ open, device, onClose, onSave, syncState, la
 
           <div className="field">
             <label>{t('role.title')}</label>
-            <div className="seg sync-roles">
-              <label className="seg-opt">
-                <input
-                  type="radio"
-                  name="role"
-                  checked={role === ROLES.primary}
-                  onChange={() => setRole(ROLES.primary)}
-                />
-                {t('role.primary')}
-              </label>
-              <label className="seg-opt">
-                <input
-                  type="radio"
-                  name="role"
-                  checked={role === ROLES.secondary}
-                  onChange={() => setRole(ROLES.secondary)}
-                />
-                {t('role.secondary')}
-              </label>
-            </div>
-            <p className="sync-hint text-muted">{t('role.explain')}</p>
+            <p className="sync-role-current">
+              {t(device?.role === ROLES.primary ? 'role.primary' : 'role.secondary')}
+            </p>
+            <p className="sync-hint text-muted">{t('role.assignedByServer')}</p>
+
+            {/* Salida imprescindible: si el principal se pierde o se rompe, sin
+                esto no habría forma de volver a empezar un ayuno desde ningún
+                sitio. */}
+            {device?.role !== ROLES.primary && (
+              <button
+                type="button"
+                className="btn btn-secondary btn-block"
+                disabled={busy}
+                onClick={async () => {
+                  setBusy(true);
+                  try {
+                    await onClaimPrimary?.();
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
+              >
+                {t('role.claim')}
+              </button>
+            )}
           </div>
 
           <label className="radio sync-toggle">
@@ -153,17 +156,13 @@ export function SyncSettingsSheet({ open, device, onClose, onSave, syncState, la
 
           {/* Un solo dispositivo marcado como principal: si ambos lo fueran,
               dos ayunos distintos competirían y no hay forma de fusionarlos. */}
-          {enabled && role === ROLES.primary && (
-            <p className="sync-hint text-muted">{t('sync.onlyOnePrimary')}</p>
-          )}
-
           {/* Explica por qué, con la sincronización apagada, este dispositivo
               puede empezar ayunos aunque esté marcado como secundario. */}
           {!enabled && (
             <p className="sync-hint text-muted">{t('sync.disabledMeansFullControl')}</p>
           )}
 
-          {enabled && role === ROLES.secondary && (
+          {enabled && device?.role === ROLES.secondary && (
             <p className="sync-hint text-muted">{t('sync.secondaryMeans')}</p>
           )}
 

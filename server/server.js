@@ -129,6 +129,77 @@ db.exec(`
 `);
 
 /**
+ * Número de secuencia asignado por el SERVIDOR en cada escritura.
+ *
+ * Antes se paginaba por `updated_at`, que lo pone quien escribe. Con varios
+ * dispositivos eso se rompe: si el reloj de uno va cinco minutos adelantado, su
+ * cursor queda por delante de lo que escriben los demás y `changedSince`
+ * concluye que no hay novedades — de forma permanente. Ese dispositivo deja de
+ * refrescar y los otros siguen bien, que es justo el síntoma difícil de
+ * atribuir.
+ *
+ * Con una secuencia del servidor hay un único reloj: el suyo. Los relojes de
+ * los clientes siguen usándose para resolver conflictos (LWW), pero ya no
+ * deciden qué se ha visto y qué no.
+ */
+try {
+  db.exec('ALTER TABLE records ADD COLUMN seq INTEGER NOT NULL DEFAULT 0');
+} catch {
+  // Ya existe: la base venía de una versión anterior o ya se migró.
+}
+db.exec(`
+  CREATE INDEX IF NOT EXISTS records_seq ON records (user_id, seq);
+  CREATE TABLE IF NOT EXISTS seq_counter (
+    user_id TEXT PRIMARY KEY,
+    value   INTEGER NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS primary_device (
+    user_id   TEXT PRIMARY KEY,
+    device_id TEXT NOT NULL,
+    claimed_at INTEGER NOT NULL
+  );
+`);
+
+/**
+ * Decide qué papel tiene un dispositivo.
+ *
+ * El primero que aparece se queda con el principal; los siguientes son
+ * secundarios. Así no hay nada que configurar y, sobre todo, no puede haber dos
+ * principales: el servidor sólo reconoce uno, y dos principales significarían
+ * dos ayunos compitiendo sin forma de unirlos.
+ *
+ * `claim` permite pasar el papel a otro aparato. Es la salida imprescindible:
+ * si el principal se pierde o se rompe, sin esto no habría manera de volver a
+ * empezar un ayuno desde ningún sitio.
+ */
+function resolveRole(userId, deviceId, claim) {
+  if (!deviceId) return 'secondary';
+
+  const row = db.prepare('SELECT device_id FROM primary_device WHERE user_id = ?').get(userId);
+
+  if (!row || claim === true) {
+    db.prepare(
+      'INSERT INTO primary_device (user_id, device_id, claimed_at) VALUES (?, ?, ?) ' +
+      'ON CONFLICT(user_id) DO UPDATE SET device_id = excluded.device_id, claimed_at = excluded.claimed_at'
+    ).run(userId, deviceId, Date.now());
+    return 'primary';
+  }
+
+  return row.device_id === deviceId ? 'primary' : 'secondary';
+}
+
+/** Reserva `n` números de secuencia para un usuario y devuelve el primero. */
+function nextSeq(userId, n) {
+  const row = db.prepare('SELECT value FROM seq_counter WHERE user_id = ?').get(userId);
+  const start = (row?.value ?? 0) + 1;
+  db.prepare(
+    'INSERT INTO seq_counter (user_id, value) VALUES (?, ?) ' +
+    'ON CONFLICT(user_id) DO UPDATE SET value = excluded.value'
+  ).run(userId, start + n - 1);
+  return start;
+}
+
+/**
  * Identidad, tomada del JWT que inyecta Cloudflare Access.
  *
  * No se valida la firma aquí: nada llega a este proceso sin haber pasado por
@@ -149,22 +220,54 @@ function readAll(userId, kind) {
   return rows.map((r) => JSON.parse(r.body));
 }
 
-function writeAll(userId, kind, records) {
-  const stmt = db.prepare(
-    'INSERT INTO records (user_id, kind, id, updated_at, body) VALUES (?, ?, ?, ?, ?) ' +
-    'ON CONFLICT(user_id, kind, id) DO UPDATE SET updated_at = excluded.updated_at, body = excluded.body'
+/** Registros de un tipo escritos después de `sinceSeq`, según el servidor. */
+function readSince(userId, kind, sinceSeq) {
+  const rows = db.prepare(
+    'SELECT body FROM records WHERE user_id = ? AND kind = ? AND seq > ? ORDER BY seq'
+  ).all(userId, kind, sinceSeq);
+  return rows.map((r) => JSON.parse(r.body));
+}
+
+function maxSeq(userId) {
+  return db.prepare('SELECT COALESCE(MAX(seq), 0) AS s FROM records WHERE user_id = ?').get(userId).s;
+}
+
+/**
+ * Escribe sólo lo que ha cambiado, asignando secuencia nueva a cada cambio.
+ *
+ * Comparar antes de escribir importa: si se reescribiera todo en cada ciclo,
+ * cada registro recibiría secuencia nueva y todos los dispositivos se
+ * descargarían la base entera cada treinta segundos.
+ */
+function writeChanged(userId, kind, records) {
+  const existing = new Map(
+    db.prepare('SELECT id, body FROM records WHERE user_id = ? AND kind = ?')
+      .all(userId, kind)
+      .map((r) => [r.id, r.body])
   );
+
+  const cambios = records.filter((r) => existing.get(r.id) !== JSON.stringify(r));
+  if (cambios.length === 0) return 0;
+
+  const stmt = db.prepare(
+    'INSERT INTO records (user_id, kind, id, updated_at, seq, body) VALUES (?, ?, ?, ?, ?, ?) ' +
+    'ON CONFLICT(user_id, kind, id) DO UPDATE SET ' +
+    'updated_at = excluded.updated_at, seq = excluded.seq, body = excluded.body'
+  );
+
   // Una transacción: si algo falla a mitad, no queda medio sincronizado.
   db.exec('BEGIN');
   try {
-    for (const r of records) {
-      stmt.run(userId, kind, r.id, r.updatedAt ?? r.at ?? r.startedAt ?? 0, JSON.stringify(r));
+    let seq = nextSeq(userId, cambios.length);
+    for (const r of cambios) {
+      stmt.run(userId, kind, r.id, r.updatedAt ?? r.at ?? r.startedAt ?? 0, seq++, JSON.stringify(r));
     }
     db.exec('COMMIT');
   } catch (e) {
     db.exec('ROLLBACK');
     throw e;
   }
+  return cambios.length;
 }
 
 /**
@@ -174,15 +277,29 @@ function writeAll(userId, kind, records) {
  * servidor fusiona, guarda, y devuelve lo que el cliente aún no ha visto.
  * Simétrico: los dos lados acaban con lo mismo.
  */
-function sync(userId, { since = 0, events = [], sessions = [], activeFast = null }) {
+function sync(userId, {
+  since = 0,
+  sinceSeq = null,
+  events = [],
+  sessions = [],
+  activeFast = null,
+  deviceId = null,
+  claimPrimary = false,
+}) {
+  const role = resolveRole(userId, deviceId, claimPrimary);
+  // `sinceSeq` es el cursor bueno. `since` (hora del cliente) sólo se usa si el
+  // cliente aún no conoce la secuencia, y entonces se le manda todo una vez:
+  // más barato que arriesgarse a que se pierda algo.
+  const cursor = Number.isFinite(sinceSeq) ? sinceSeq : 0;
+
   const storedEvents = readAll(userId, 'event');
   const storedSessions = readAll(userId, 'session');
 
   const mergedEvents = mergeRecords(storedEvents, events);
   const mergedSessions = mergeRecords(storedSessions, sessions);
 
-  writeAll(userId, 'event', mergedEvents);
-  writeAll(userId, 'session', mergedSessions);
+  writeChanged(userId, 'event', mergedEvents);
+  writeChanged(userId, 'session', mergedSessions);
 
   // El ayuno en curso es un único registro. Sólo lo escribe el principal, así
   // que no hay que fusionar: gana el más reciente.
@@ -191,27 +308,22 @@ function sync(userId, { since = 0, events = [], sessions = [], activeFast = null
   // comunica «este ayuno acabó»; si sólo se enviaran los vivos, el servidor
   // seguiría devolviendo el anterior y el contador reviviría en el cliente.
   const storedActive = readAll(userId, 'active')[0] ?? null;
-  let winningActive = storedActive;
-  if (activeFast) {
-    const a = activeFast.updatedAt ?? 0;
-    const b = storedActive?.updatedAt ?? -1;
-    if (a >= b) {
-      writeAll(userId, 'active', [{ ...activeFast, id: 'current' }]);
-      winningActive = activeFast;
-    }
+  // Sólo el principal escribe esta ranura, y lo comprueba el SERVIDOR: fiarse
+  // de que el cliente se comporte deja la puerta abierta a que un secundario
+  // mal configurado pise el ayuno vivo.
+  if (role === 'primary' && activeFast && (activeFast.updatedAt ?? 0) >= (storedActive?.updatedAt ?? -1)) {
+    writeChanged(userId, 'active', [{ ...activeFast, id: 'current' }]);
   }
 
   return {
-    events: changedSince(mergedEvents, since),
-    sessions: changedSince(mergedSessions, since),
-    activeFast: winningActive,
-    // La marca sale del máximo observado, no del reloj del servidor: usar la
-    // hora actual se saltaría cambios escritos mientras viajaba la respuesta.
-    cursor: Math.max(
-      highWaterMark(mergedEvents, since),
-      highWaterMark(mergedSessions, since),
-      winningActive?.updatedAt ?? 0
-    ),
+    events: readSince(userId, 'event', cursor),
+    sessions: readSince(userId, 'session', cursor),
+    // El ayuno activo va siempre: es un solo registro y ahorra que un
+    // dispositivo se quede con un contador viejo por un cursor desajustado.
+    activeFast: readAll(userId, 'active')[0] ?? null,
+    cursor: maxSeq(userId),
+    // El papel lo dicta el servidor; el cliente lo aplica, no lo elige.
+    role,
     serverTime: Date.now(),
   };
 }
@@ -219,10 +331,10 @@ function sync(userId, { since = 0, events = [], sessions = [], activeFast = null
 /**
  * CORS.
  *
- * En desarrollo la app se sirve desde Vite (puerto 5173) y el servidor está en
- * el 8787: orígenes distintos, así que el navegador exige estas cabeceras. Con
- * curl no hacen falta —curl no aplica la política del navegador— y por eso un
- * `curl /health` puede funcionar mientras la app falla.
+ * Con la app servida desde este mismo proceso no hace falta —mismo origen— pero
+ * se mantiene por si algún día se separan, y para el desarrollo con Vite en otro
+ * puerto. Con curl no aplica: por eso un `curl /health` puede funcionar mientras
+ * la app falla.
  *
  * Como se usa `credentials: 'include'` para las cookies de Access, NO se puede
  * responder `*`: hay que reflejar el origen concreto. Reflejar cualquiera sería
@@ -243,7 +355,6 @@ function isAllowedOrigin(origin) {
     const { hostname, protocol } = new URL(origin);
     if (protocol !== 'http:' && protocol !== 'https:') return false;
     if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1') return true;
-    // Rangos privados: 192.168.x.x, 10.x.x.x, 172.16-31.x.x
     if (/^192\.168\.\d{1,3}\.\d{1,3}$/.test(hostname)) return true;
     if (/^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname)) return true;
     if (/^172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}$/.test(hostname)) return true;
@@ -260,7 +371,6 @@ function applyCors(req, res) {
   res.setHeader('access-control-allow-credentials', 'true');
   res.setHeader('access-control-allow-methods', 'GET, POST, OPTIONS');
   res.setHeader('access-control-allow-headers', 'content-type');
-  // Sin esto, una respuesta cacheada para un origen se serviría a otro.
   res.setHeader('vary', 'Origin');
 }
 

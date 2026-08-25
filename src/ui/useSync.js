@@ -23,7 +23,7 @@ export function useSync({ device, onApplied }) {
     setLastError(result.state === SYNC_STATE.error ? 'sync.errorGeneric' : null);
     // Sólo se recarga la interfaz si de verdad llegó algo, para no repintar
     // cada treinta segundos sin motivo.
-    if (result.applied > 0 || result.activeFastChanged) applied.current?.();
+    if (result.applied > 0 || result.activeFastChanged || result.roleChanged) applied.current?.();
   }, []);
 
   useEffect(() => {
@@ -43,6 +43,21 @@ export function useSync({ device, onApplied }) {
   }, [handle]);
 
   /**
+   * Pasa el papel de principal a este dispositivo.
+   *
+   * Existe para cuando el principal se pierde, se rompe o se cambia: sin esto
+   * no habría forma de volver a empezar un ayuno desde ningún sitio.
+   */
+  const claimPrimary = useCallback(async () => {
+    setState(SYNC_STATE.syncing);
+    const result = await syncOnce({ claimPrimary: true });
+    handle(result);
+    // El papel cambió, así que la interfaz debe releerlo.
+    applied.current?.();
+    return result;
+  }, [handle]);
+
+  /**
    * Empuja lo que se acabe de escribir, sin esperar al siguiente ciclo.
    * No hace nada si la sincronización está apagada.
    */
@@ -52,7 +67,7 @@ export function useSync({ device, onApplied }) {
     syncSoon({ onResult: handle });
   }, [enabled, handle]);
 
-  return { state, lastRun, lastError, syncNow, pushSoon, enabled };
+  return { state, lastRun, lastError, syncNow, claimPrimary, pushSoon, enabled };
 }
 
 export { SYNC_STATE };

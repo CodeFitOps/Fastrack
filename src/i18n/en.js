@@ -184,6 +184,9 @@ export const en = {
   'role.title': 'THIS DEVICE',
   'role.primary': 'Primary — runs the fast',
   'role.secondary': 'Secondary — review and log',
+  'role.assignedByServer': 'Assigned by the server: the first device to connect runs the fast. The others log and review.',
+  'role.claim': 'RUN THE FAST FROM HERE',
+  'sync.urlAuto': 'Automatic (same server as the app)',
   'role.explain': 'Only one device starts and ends fasts. Both can log meals, readings and notes.',
 
   /* ── sync ── */

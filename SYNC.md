@@ -33,6 +33,25 @@ de ayuno: un puñado de registros al día, no un flujo continuo.
   sincronizar. Purgar antes de que el otro lado haya visto la lápida la
   resucita.
 
+### El cursor lo lleva el servidor
+
+Cada escritura recibe un número de secuencia del **servidor**. Los clientes
+piden «lo escrito después de la secuencia N», no «después de la hora N».
+
+Al principio se paginaba por `updatedAt`, que lo pone quien escribe. Con varios
+dispositivos eso se rompe de una forma difícil de atribuir: si el reloj de uno
+va cinco minutos adelantado, su cursor queda por delante de lo que escriben los
+demás y concluye que no hay novedades — **permanentemente**. Ese dispositivo
+deja de refrescar mientras los otros funcionan bien.
+
+Con la secuencia del servidor hay un único reloj para decidir qué se ha visto.
+Los relojes de los clientes se siguen usando para resolver conflictos, pero ya
+no deciden qué llega y qué no.
+
+El servidor sólo asigna secuencia nueva a lo que **de verdad cambia**: si
+reescribiera todo en cada ciclo, cada dispositivo se descargaría la base entera
+cada treinta segundos.
+
 ### Resolución de conflictos, y su límite
 
 Gana la escritura más reciente. Suficiente para un usuario con dos dispositivos:
@@ -93,9 +112,27 @@ resolverlo, que siempre es preferible.
 hay y puede hacerlo todo. Es el estado actual de la app y no cambia. El papel
 sólo entra en juego con un servidor de por medio.
 
-El papel se guarda **local y no se sincroniza**: es una propiedad del
-dispositivo, no del usuario. Si viajara con los datos, ambos acabarían con el
-mismo papel y uno quedaría sin poder llevar el ayuno.
+### El papel lo asigna el servidor
+
+No hay nada que configurar: el primer dispositivo que se conecta se queda con el
+principal, los demás son secundarios. Cada uno se identifica con un id estable
+generado la primera vez, que no se sincroniza porque es propiedad del aparato.
+
+Esto elimina el fallo de configurar dos principales — dos ayunos compitiendo sin
+forma de unirlos — porque el servidor sólo reconoce uno. Y lo comprueba el
+servidor al escribir, no sólo el cliente: fiarse de que el cliente se comporte
+dejaba la puerta abierta a que un secundario mal configurado pisara el ayuno
+vivo.
+
+**Salida imprescindible**: el botón «llevar el ayuno desde aquí» traspasa el
+papel. Sin él, perder o romper el móvil dejaría sin poder empezar un ayuno desde
+ningún sitio.
+
+### La dirección del servidor se deduce sola
+
+La app se sirve desde el mismo proceso que la API, así que su propio origen es
+la respuesta correcta y el campo se rellena solo. Sólo hay que escribirla en una
+app empaquetada, donde el origen es interno (`capacitor://localhost`).
 
 ### Consecuencia para las notificaciones
 

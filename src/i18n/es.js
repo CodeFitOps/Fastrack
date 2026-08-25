@@ -184,6 +184,9 @@ export const es = {
   'role.title': 'ESTE DISPOSITIVO',
   'role.primary': 'Principal — lleva el ayuno',
   'role.secondary': 'Secundario — consulta y registra',
+  'role.assignedByServer': 'Lo asigna el servidor: el primer dispositivo que se conecta lleva el ayuno. Los demás registran y consultan.',
+  'role.claim': 'LLEVAR EL AYUNO DESDE AQUÍ',
+  'sync.urlAuto': 'Automático (mismo servidor que la app)',
   'role.explain': 'Sólo un dispositivo empieza y termina ayunos. Los dos pueden registrar comidas, medidas y notas.',
 
   /* ── sincronización ── */

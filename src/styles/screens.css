@@ -1181,3 +1181,10 @@
   font-size: 11.5px;
   color: var(--color-accent-700);
 }
+
+.sync-role-current {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 15px;
+}
