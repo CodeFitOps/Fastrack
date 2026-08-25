@@ -21,7 +21,7 @@
 import {
   loadEventsRaw,
   loadHistory,
-  loadActiveFast,
+  loadActiveFastRaw,
   loadDeviceSettings,
   saveDeviceSettings,
   restoreMerged,
@@ -54,7 +54,9 @@ export async function syncOnce({ fetchImpl = fetch } = {}) {
   const [events, history, activeFast] = await Promise.all([
     loadEventsRaw(),
     loadHistory(),
-    loadActiveFast(),
+    // En crudo: un ayuno terminado debe viajar, porque es lo que comunica a los
+    // demás dispositivos que acabó.
+    loadActiveFastRaw(),
   ]);
 
   const url = new URL('/sync', settings.serverUrl).toString();

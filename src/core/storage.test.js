@@ -144,3 +144,44 @@ test('el ciclo completo: empezar, registrar, recargar, seguir ayunando', async (
   assert.equal(Math.round(elapsedMs(activo) / H), 5);
   assert.equal(eventos.length, 1);
 });
+
+/* ---- terminar un ayuno con sincronización de por medio ---- */
+
+test('un ayuno terminado deja rastro en la ranura, no la vacía', async () => {
+  // Vaciarla hacía que la siguiente sincronización lo resucitara: el servidor
+  // seguía teniendo el ayuno vivo y, al no recibir señal de que había acabado,
+  // lo devolvía como novedad. El contador volvía a correr solo.
+  const s = startFast({ targetMs: 16 * H });
+  await storage.saveActiveFast(s);
+  await storage.clearActiveFast({ ...s, endedAt: Date.now() });
+
+  assert.equal(await storage.loadActiveFast(), null, 'para la interfaz, no hay ayuno');
+
+  const raw = await storage.loadActiveFastRaw();
+  assert.ok(raw, 'para la sincronización, el registro sigue ahí');
+  assert.ok(raw.endedAt != null, 'y lleva endedAt, que es lo que comunica el fin');
+  assert.equal(raw.id, s.id, 'conserva el identificador o el servidor no sabría cuál cerrar');
+});
+
+test('clearActiveFast sin ayuno guardado no deja basura', async () => {
+  await storage.clearActiveFast();
+  assert.equal(await storage.loadActiveFastRaw(), null);
+});
+
+test('un ayuno terminado que llega del servidor no revive el contador', async () => {
+  const s = startFast({ targetMs: 16 * H });
+  await storage.restoreMerged({
+    activeFast: { ...s, endedAt: Date.now(), updatedAt: Date.now() },
+    history: [],
+    events: [],
+  });
+  assert.equal(await storage.loadActiveFast(), null);
+});
+
+test('un ayuno vivo que llega del servidor sí se adopta', async () => {
+  const s = startFast({ targetMs: 16 * H });
+  await storage.restoreMerged({ activeFast: s, history: [], events: [] });
+  const back = await storage.loadActiveFast();
+  assert.ok(back);
+  assert.equal(back.id, s.id);
+});

@@ -184,8 +184,12 @@ function sync(userId, { since = 0, events = [], sessions = [], activeFast = null
   writeAll(userId, 'event', mergedEvents);
   writeAll(userId, 'session', mergedSessions);
 
-  // El ayuno en curso es un único registro. Sólo lo escribe el dispositivo
-  // principal, así que no hay que fusionar: gana el más reciente.
+  // El ayuno en curso es un único registro. Sólo lo escribe el principal, así
+  // que no hay que fusionar: gana el más reciente.
+  //
+  // Un ayuno TERMINADO también viaja por aquí, con `endedAt` puesto. Es lo que
+  // comunica «este ayuno acabó»; si sólo se enviaran los vivos, el servidor
+  // seguiría devolviendo el anterior y el contador reviviría en el cliente.
   const storedActive = readAll(userId, 'active')[0] ?? null;
   let winningActive = storedActive;
   if (activeFast) {

@@ -94,7 +94,24 @@ const backend = BACKENDS[platform];
  * Returns null rather than throwing on corrupt data: a fasting app should open
  * to an empty start screen, not a crash, if storage is damaged.
  */
+/**
+ * El ayuno en curso, o null si no hay ninguno.
+ *
+ * Un ayuno terminado se conserva en esta ranura con `endedAt` puesto, y aquí se
+ * traduce a null. La razón está en `clearActiveFast()`.
+ */
 export async function loadActiveFast() {
+  const s = await loadActiveFastRaw();
+  return s && s.endedAt == null ? s : null;
+}
+
+/**
+ * La ranura tal cual, incluido un ayuno ya terminado.
+ *
+ * La usa la sincronización: el registro terminado es lo que comunica «este
+ * ayuno acabó» a los demás dispositivos.
+ */
+export async function loadActiveFastRaw() {
   try {
     const raw = await backend.get(KEY_ACTIVE_FAST);
     if (!raw) return null;
@@ -131,8 +148,25 @@ export async function saveActiveFast(session) {
   await backend.set(KEY_ACTIVE_FAST, JSON.stringify(touch(session)));
 }
 
-export async function clearActiveFast() {
-  await backend.remove(KEY_ACTIVE_FAST);
+/**
+ * Cierra el ayuno en curso.
+ *
+ * NO borra la ranura: guarda el ayuno con `endedAt`, que es lo que hace las
+ * veces de lápida. Vaciarla sin más provocaba que la siguiente sincronización
+ * lo resucitara — el servidor seguía teniendo el ayuno vivo y, al no recibir
+ * ninguna señal de que había terminado, lo devolvía como novedad. El contador
+ * volvía a correr solo.
+ *
+ * @param {object} [ended] el ayuno ya terminado; si falta, se cierra ahora.
+ */
+export async function clearActiveFast(ended) {
+  const current = ended ?? (await loadActiveFastRaw());
+  if (!current) {
+    await backend.remove(KEY_ACTIVE_FAST);
+    return;
+  }
+  const closed = { ...current, endedAt: current.endedAt ?? Date.now() };
+  await backend.set(KEY_ACTIVE_FAST, JSON.stringify(touch(closed)));
 }
 
 export async function loadHistory() {
@@ -292,6 +326,9 @@ export async function snapshot() {
 export async function restoreMerged({ activeFast, history, events }) {
   await backend.set(KEY_HISTORY, JSON.stringify(history));
   await backend.set(KEY_EVENTS, JSON.stringify(events));
+  // Se escribe tal cual llega, sin volver a marcar `updatedAt`: hacerlo daría a
+  // un dato recibido una marca más nueva que la del origen y ganaría conflictos
+  // que no le corresponden.
   if (activeFast) {
     await backend.set(KEY_ACTIVE_FAST, JSON.stringify(activeFast));
   } else {

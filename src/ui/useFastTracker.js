@@ -149,7 +149,9 @@ export function useFastTracker({ onLocalWrite } = {}) {
     const done = { ...endFast(session), ...logFields };
     await cancelGoalAlert();
     setHistory(await appendToHistory(done));
-    await clearActiveFast();
+    // Se pasa el ayuno cerrado para que la ranura conserve su identificador y
+    // la sincronización pueda decirle al servidor que este ayuno terminó.
+    await clearActiveFast(done);
     setSession(null);
     notifyWrite.current?.();
     return done;
