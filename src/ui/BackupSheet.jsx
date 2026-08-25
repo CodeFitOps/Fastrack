@@ -6,7 +6,7 @@ import {
   parseBackup,
   mergeBackup,
 } from '../core/backup.js';
-import { snapshot, restoreMerged } from '../platform/storage.js';
+import { snapshot, restoreMerged, wipeLocalData } from '../platform/storage.js';
 import { useDismissable } from './useDismissable.js';
 import { useI18n } from '../i18n/LanguageProvider.jsx';
 
@@ -22,10 +22,23 @@ export function BackupSheet({ open, onClose, onImported }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const [result, setResult] = useState(null);
+  const [confirmWipe, setConfirmWipe] = useState(false);
 
   useDismissable(open, onClose);
 
   if (!open) return null;
+
+  const wipe = async () => {
+    setBusy(true);
+    try {
+      await wipeLocalData();
+      onImported?.();
+      onClose();
+    } finally {
+      setBusy(false);
+      setConfirmWipe(false);
+    }
+  };
 
   const exportar = async () => {
     setBusy(true);
@@ -107,6 +120,41 @@ export function BackupSheet({ open, onClose, onImported }) {
           <p className="backup-note text-muted">{t('backup.mergeNote')}</p>
 
           {error && <p className="log-error">{t(error)}</p>}
+
+          {/* Zona de borrado, separada del resto: exportar e importar son
+              acciones seguras, ésta no. */}
+          <div className="backup-danger">
+            {!confirmWipe ? (
+              <button
+                type="button"
+                className="btn btn-ghost backup-wipe"
+                onClick={() => setConfirmWipe(true)}
+              >
+                {t('backup.wipe')}
+              </button>
+            ) : (
+              <>
+                <p className="log-warn">{t('backup.wipeConfirm')}</p>
+                <div className="backup-danger-actions">
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => setConfirmWipe(false)}
+                  >
+                    {t('common.cancel')}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    disabled={busy}
+                    onClick={wipe}
+                  >
+                    {t('backup.wipeYes')}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
 
           {result && (
             <div className="backup-result">

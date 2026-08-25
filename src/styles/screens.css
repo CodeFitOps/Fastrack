@@ -1188,3 +1188,27 @@
   font-weight: var(--font-heading-weight);
   font-size: 15px;
 }
+
+/* Zona de borrado: separada por una regla, para que no se pulse por inercia
+   al bajar desde exportar. */
+.backup-danger {
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 2px solid var(--color-divider);
+}
+
+.backup-wipe {
+  color: var(--color-accent-700);
+  padding-inline: 0;
+}
+
+.backup-danger-actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.backup-danger-actions .btn {
+  flex: 1;
+  justify-content: center;
+}

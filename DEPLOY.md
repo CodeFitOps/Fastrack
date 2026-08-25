@@ -222,6 +222,33 @@ cetonas, entrenos y notas.
 5. Pon el móvil en modo avión, empieza un ayuno, registra algo, quita el modo
    avión. Debe subir solo.
 
+## Reiniciar en pruebas
+
+```bash
+node scripts/reset-server.mjs                          # lista lo que hay
+node scripts/reset-server.mjs --user tu@correo --yes   # borra un usuario
+node scripts/reset-server.mjs --all --yes              # borra todo
+```
+
+Sin `--yes` sólo enseña lo que haría.
+
+**Borrar el servidor no basta.** Cada dispositivo conserva su copia, y como el
+borrado no deja lápidas, el primero que sincronice repoblará la base entera. Hay
+que borrar también en cada uno, con el botón **BORRAR ESTE DISPOSITIVO** de la
+hoja de copia de seguridad, o desde la consola del navegador:
+
+```js
+Object.keys(localStorage).filter(k => k.startsWith('fastrack.'))
+  .forEach(k => localStorage.removeItem(k)); location.reload()
+```
+
+El botón de la app es mejor que la consola porque conserva la dirección del
+servidor y la identidad del dispositivo: vuelve a sincronizar solo, sin
+reconfigurar nada.
+
+Al borrar un usuario se libera también su dispositivo principal, así que el
+siguiente que sincronice tomará el papel, como en una instalación nueva.
+
 ## Mantenimiento
 
 ```bash

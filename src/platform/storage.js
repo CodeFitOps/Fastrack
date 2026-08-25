@@ -465,3 +465,30 @@ export async function saveDeviceSettings(patch) {
   await backend.set(KEY_DEVICE, JSON.stringify(next));
   return next;
 }
+
+
+/* ---- reinicio (modo de pruebas) ---- */
+
+/**
+ * Borra todos los datos de este dispositivo.
+ *
+ * Incluye el ayuno en curso, el historial, los eventos y la marca de
+ * sincronización. NO borra la identidad del dispositivo ni los ajustes de
+ * servidor: así vuelve a sincronizar solo, en vez de dejarte reconfigurándolo.
+ *
+ * Vaciar el cursor es imprescindible: sin eso el dispositivo creería estar al
+ * día y no se descargaría nada del servidor.
+ */
+export async function wipeLocalData() {
+  await backend.remove(KEY_ACTIVE_FAST);
+  await backend.remove(KEY_HISTORY);
+  await backend.remove(KEY_EVENTS);
+  await backend.remove(KEY_SCHEMA);
+
+  const settings = await loadDeviceSettings();
+  await backend.set(KEY_DEVICE, JSON.stringify({
+    ...settings,
+    lastSyncedAt: 0,
+    lastSyncedSeq: 0,
+  }));
+}
