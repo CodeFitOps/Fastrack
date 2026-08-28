@@ -44,29 +44,78 @@ nvm install 22 && nvm use 22
 > shell. Hay que poner la ruta completa en `ExecStart`, la que devuelva
 > `which node` con la versión ya activa. El script de preparación lo hace solo.
 
-## 3. Preparar el servidor
+## 3. Entornos
+
+Cada entorno tiene su carpeta, su rama, su puerto, su base de datos y su
+servicio. **Bases separadas es lo importante**: compartirlas haría que una
+prueba en dev machacara los datos de stg.
+
+| | dev | stg |
+|---|---|---|
+| Rama | `dev` | `main` |
+| Carpeta | `~/LAB/fastrack/dev/Fastrack` | `~/LAB/fastrack/stg/Fastrack` |
+| Puerto | 8788 | 8787 |
+| Servicio | `fastrack-dev` | `fastrack-stg` |
+| Base | `~/LAB/fastrack/dev/data/` | `~/LAB/fastrack/stg/data/` |
+| Fuera | no (sólo local) | `fastrack.codeengtools.eu` |
+
+La configuración va en un `.env` por entorno, **que no se versiona**. En el
+repositorio queda `.env.example` documentando cada variable.
 
 ```bash
-git clone https://github.com/CodeFitOps/Fastrack.git
-cd Fastrack
-npm run setup
+cd ~/LAB/fastrack/dev/Fastrack
+git checkout dev
+cp .env.example .env
+$EDITOR .env                      # ENV_NAME=dev, PORT=8788, DB_PATH=…
+bash scripts/setup-server.sh
 ```
 
-El script comprueba la versión de Node, arranca el servidor contra una base
-temporal, hace un ciclo de sincronización real para confirmar que funciona, y
-genera el fichero de systemd con tus rutas ya rellenadas.
-
-**No instala nada por su cuenta**: escribir en `/etc` requiere sudo, y un script
-que lo hace sin que lo veas es justo lo que no conviene ejecutar a ciegas. Te
-enseña el comando y lo lanzas tú:
+El script comprueba Node, arranca el servidor contra una base temporal, hace un
+ciclo de sincronización real, y genera `/tmp/fastrack-dev.service` con tus rutas
+ya rellenadas.
 
 ```bash
-cat /tmp/fastrack.service                 # revísalo primero
-sudo cp /tmp/fastrack.service /etc/systemd/system/fastrack.service
+cat /tmp/fastrack-dev.service     # revísalo primero
+sudo cp /tmp/fastrack-dev.service /etc/systemd/system/fastrack-dev.service
 sudo systemctl daemon-reload
-sudo systemctl enable --now fastrack
-systemctl status fastrack
+sudo systemctl enable --now fastrack-dev
+systemctl status fastrack-dev
 ```
+
+Para stg, lo mismo desde su carpeta con su `.env`.
+
+> La unidad apunta al `.env` con `EnvironmentFile=`, no copia sus valores.
+> Cambiar el puerto o la base es editar el `.env` y reiniciar el servicio: no
+> hace falta regenerar la unidad.
+>
+> Ojo con el formato: systemd lee ese fichero directamente y **no** es sintaxis
+> de shell. Nada de `export`, ni `$VARIABLES`, ni comandos. Sólo `CLAVE=valor`.
+
+### Probar dev desde el Mac
+
+dev escucha sólo en local. Un túnel SSH basta y evita abrir puertos:
+
+```bash
+ssh -N -L 8788:127.0.0.1:8788 mpino@192.168.1.110
+```
+
+Y abres `http://localhost:8788` en el navegador.
+
+### Desplegar un cambio
+
+```bash
+# dev
+cd ~/LAB/fastrack/dev/Fastrack
+git pull && npm run build:web && sudo systemctl restart fastrack-dev
+
+# stg, cuando dev esté estable
+cd ~/LAB/fastrack/stg/Fastrack
+git checkout main && git merge dev && git push
+npm run build:web && sudo systemctl restart fastrack-stg
+```
+
+**El `build:web` no es opcional**: la app se sirve compilada desde `dist/`, así
+que un `git pull` sin recompilar deja la versión anterior en pantalla.
 
 ## 3b. Compilar la app
 

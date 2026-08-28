@@ -19,6 +19,9 @@ public/fonts/*.woff2
 # así que guárdalo aparte y con copia — pero nunca aquí.
 .env
 .env.*
+# ...salvo el ejemplo, que sí se versiona: es la documentación de qué
+# variables existen y para qué sirven.
+!.env.example
 *.keystore
 *.jks
 *.p12

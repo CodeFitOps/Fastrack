@@ -1,13 +1,18 @@
 #!/usr/bin/env bash
 #
-# Preparación del servidor de sincronización.
+# Preparación de un entorno de Fastrack.
 #
-# Comprueba requisitos, arranca el servidor de prueba contra una base temporal y
-# verifica que responde. Genera el fichero de systemd, pero NO lo instala: eso
-# necesita sudo, y un script que escribe en /etc sin que lo veas es exactamente
-# lo que no hay que ejecutar a ciegas. Te enseña el comando y lo ejecutas tú.
+# Lee la configuración de .env (o del fichero que se pase), comprueba
+# requisitos, arranca el servidor contra una base temporal, verifica que un
+# ciclo de sincronización funciona, y genera la unidad de systemd del entorno.
 #
+#   cp .env.example .env      # y ajústalo
 #   bash scripts/setup-server.sh
+#   bash scripts/setup-server.sh .env.stg
+#
+# NO instala nada por su cuenta: escribir en /etc necesita sudo, y un script que
+# lo hace sin que lo veas es justo lo que no conviene ejecutar a ciegas. Enseña
+# el comando y lo lanzas tú.
 #
 set -euo pipefail
 
@@ -16,48 +21,73 @@ ok()   { echo "${GREEN}✓${OFF} $1"; }
 bad()  { echo "${RED}✗${OFF} $1"; }
 warn() { echo "${YELLOW}!${OFF} $1"; }
 
+ENV_FILE=${1:-.env}
+
 echo
-echo "Fastrack — preparación del servidor"
-echo "───────────────────────────────────"
+echo "Fastrack — preparación del entorno"
+echo "──────────────────────────────────"
+
+# ── Configuración ──────────────────────────────────────────────────────
+if [ ! -f "$ENV_FILE" ]; then
+  bad "No existe $ENV_FILE"
+  echo
+  echo "  cp .env.example $ENV_FILE"
+  echo "  \$EDITOR $ENV_FILE"
+  echo
+  echo "  ${DIM}Cada entorno necesita su propio puerto y su propia base de datos.${OFF}"
+  exit 1
+fi
+
+# `set -a` exporta lo que se defina a continuación, para que el servidor de
+# prueba lo herede sin repetirlo variable a variable.
+set -a
+# shellcheck disable=SC1090
+source "$ENV_FILE"
+set +a
+
+ENV_NAME=${ENV_NAME:-dev}
+PORT=${PORT:-8787}
+HOST=${HOST:-127.0.0.1}
+SERVICE="fastrack-${ENV_NAME}"
+
+if [ -z "${DB_PATH:-}" ]; then
+  bad "Falta DB_PATH en $ENV_FILE"
+  exit 1
+fi
+
+ok "entorno: ${ENV_NAME}  ·  puerto ${PORT}  ·  servicio ${SERVICE}"
+echo "  ${DIM}base de datos: ${DB_PATH}${OFF}"
+
+# Aviso, no error: es legítimo en pruebas, pero conviene verlo escrito.
+if [ "$HOST" = "0.0.0.0" ]; then
+  warn "HOST=0.0.0.0 abre el puerto a la red local."
+  warn "El servidor NO tiene autenticación propia: cualquier aparato entraría."
+fi
+
+mkdir -p "$(dirname "$DB_PATH")"
 
 # ── Node ───────────────────────────────────────────────────────────────
 if ! command -v node >/dev/null 2>&1; then
   bad "Node no está instalado."
-  echo
   echo "  curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -"
   echo "  sudo apt install -y nodejs"
   exit 1
 fi
 
-NODE_VERSION=$(node -v)
 NODE_MAJOR=$(node -p "process.versions.node.split('.')[0]")
 NODE_MINOR=$(node -p "process.versions.node.split('.')[1]")
-
 if [ "$NODE_MAJOR" -lt 22 ] || { [ "$NODE_MAJOR" -eq 22 ] && [ "$NODE_MINOR" -lt 5 ]; }; then
-  bad "Node $NODE_VERSION — hace falta 22.5 o superior."
-  echo
-  echo "  node:sqlite, que usa el servidor, no existe en tu versión."
-  echo "  Vite 7 tampoco funciona por debajo de la 20.19."
-  echo
-  echo "  ${DIM}Opción A — Node del sistema (recomendado en un servidor):${OFF}"
-  echo "    curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -"
-  echo "    sudo apt install -y nodejs"
-  echo
-  echo "  ${DIM}Opción B — nvm, sin tocar el Node del sistema:${OFF}"
-  echo "    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash"
-  echo "    nvm install 22 && nvm use 22"
-  echo
-  warn "Con nvm, systemd NO encontrará node: hay que poner la ruta completa"
-  warn "en ExecStart. La da 'which node' con la versión ya activa."
+  bad "Node $(node -v) — hace falta 22.5 o superior (node:sqlite)."
+  echo "  curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -"
+  echo "  sudo apt install -y nodejs"
   exit 1
 fi
-ok "Node $NODE_VERSION"
+ok "Node $(node -v)"
 
-# ── node:sqlite ────────────────────────────────────────────────────────
 if node -e "require('node:sqlite')" 2>/dev/null; then
   ok "node:sqlite disponible"
 else
-  bad "node:sqlite no disponible pese a la versión. ¿Node compilado sin SQLite?"
+  bad "node:sqlite no disponible. ¿Node compilado sin SQLite?"
   exit 1
 fi
 
@@ -67,40 +97,40 @@ if [ -d node_modules ]; then
   if npm test >/dev/null 2>&1; then
     ok "tests en verde"
   else
-    bad "los tests fallan — revísalo antes de desplegar (npm test)"
+    bad "los tests fallan — revísalo con 'npm test' antes de desplegar"
     exit 1
   fi
 else
-  warn "sin node_modules; los tests del núcleo no necesitan dependencias,"
-  warn "pero para compilar la web hará falta 'npm install'."
+  warn "sin node_modules; los tests del núcleo no los necesitan, pero"
+  warn "'npm install' hace falta para compilar la app."
 fi
 
 # ── Prueba en vivo ─────────────────────────────────────────────────────
-PORT=${PORT:-8787}
-TMPDB=$(mktemp -d)/probe.db
-echo "${DIM}Arrancando el servidor en el puerto $PORT contra una base temporal…${OFF}"
+# Contra una base temporal, nunca contra la real: no debe tocar datos.
+PROBE_DIR=$(mktemp -d)
+PROBE_PORT=$((PORT + 1000))
+echo "${DIM}Arrancando en el puerto ${PROBE_PORT} contra una base temporal…${OFF}"
 
-DB_PATH="$TMPDB" PORT="$PORT" node server/server.js >/tmp/fastrack-probe.log 2>&1 &
+DB_PATH="$PROBE_DIR/probe.db" PORT="$PROBE_PORT" HOST=127.0.0.1 \
+  node server/server.js > "$PROBE_DIR/log" 2>&1 &
 SERVER_PID=$!
-# Se para pase lo que pase, incluso si el script falla más abajo.
-trap 'kill $SERVER_PID 2>/dev/null || true; rm -rf "$(dirname "$TMPDB")"' EXIT
+trap 'kill $SERVER_PID 2>/dev/null || true; rm -rf "$PROBE_DIR"' EXIT
 
 for _ in $(seq 1 20); do
   sleep 0.25
-  if curl -sf "http://127.0.0.1:$PORT/health" >/dev/null 2>&1; then break; fi
+  if curl -sf "http://127.0.0.1:$PROBE_PORT/health" >/dev/null 2>&1; then break; fi
 done
 
-if ! curl -sf "http://127.0.0.1:$PORT/health" >/dev/null 2>&1; then
+if ! curl -sf "http://127.0.0.1:$PROBE_PORT/health" >/dev/null 2>&1; then
   bad "el servidor no responde. Registro:"
-  cat /tmp/fastrack-probe.log
+  cat "$PROBE_DIR/log"
   exit 1
 fi
 ok "responde en /health"
 
-# Un ciclo real de sincronización: subir un registro y recuperarlo.
-RESPONSE=$(curl -sf -X POST "http://127.0.0.1:$PORT/sync" \
+RESPONSE=$(curl -sf -X POST "http://127.0.0.1:$PROBE_PORT/sync" \
   -H 'content-type: application/json' \
-  -d '{"since":0,"events":[{"id":"probe","at":1,"kind":"note","updatedAt":1}]}')
+  -d '{"sinceSeq":0,"deviceId":"probe","events":[{"id":"probe","at":1,"kind":"note","updatedAt":1}]}')
 
 if echo "$RESPONSE" | grep -q '"probe"'; then
   ok "un ciclo de sincronización funciona"
@@ -110,25 +140,25 @@ else
 fi
 
 # ── systemd ────────────────────────────────────────────────────────────
-UNIT=/tmp/fastrack.service
+UNIT="/tmp/${SERVICE}.service"
 NODE_BIN=$(command -v node)
-# $USER no existe en shells no interactivos (cron, sudo -u, CI). `id -un`
-# siempre funciona.
+# $USER no existe en shells no interactivos; `id -un` sí.
 RUN_USER=$(id -un)
-RUN_HOME=${HOME:-$(getent passwd "$RUN_USER" | cut -d: -f6)}
+DB_DIR=$(dirname "$DB_PATH")
+
 cat > "$UNIT" <<EOF
 [Unit]
-Description=Fastrack sync
+Description=Fastrack sync (${ENV_NAME})
 After=network.target
 
 [Service]
 Type=simple
-User=$RUN_USER
-WorkingDirectory=$PWD
-Environment=DB_PATH=$RUN_HOME/fastrack.db
-Environment=PORT=$PORT
-Environment=NODE_ENV=production
-ExecStart=$NODE_BIN server/server.js
+User=${RUN_USER}
+WorkingDirectory=${PWD}
+# La configuración se lee del .env, no se copia aquí: cambiarla no obliga a
+# regenerar la unidad, sólo a reiniciar el servicio.
+EnvironmentFile=${PWD}/${ENV_FILE}
+ExecStart=${NODE_BIN} server/server.js
 Restart=always
 RestartSec=5
 
@@ -136,7 +166,7 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=read-only
-ReadWritePaths=$RUN_HOME
+ReadWritePaths=${DB_DIR}
 
 [Install]
 WantedBy=multi-user.target
@@ -145,14 +175,15 @@ EOF
 echo
 ok "todo listo"
 echo
-echo "Fichero de systemd generado en ${DIM}$UNIT${OFF} con tus rutas."
-echo "Revísalo y, si te parece bien:"
+echo "Unidad generada en ${DIM}${UNIT}${OFF}. Revísala y luego:"
 echo
-echo "  sudo cp $UNIT /etc/systemd/system/fastrack.service"
+echo "  sudo cp ${UNIT} /etc/systemd/system/${SERVICE}.service"
 echo "  sudo systemctl daemon-reload"
-echo "  sudo systemctl enable --now fastrack"
-echo "  systemctl status fastrack"
+echo "  sudo systemctl enable --now ${SERVICE}"
+echo "  systemctl status ${SERVICE}"
 echo
-echo "Después, el túnel de Cloudflare apuntando a localhost:$PORT."
-echo "Los pasos están en DEPLOY.md."
+echo "Compila la app y reinicia:"
+echo "  npm install && npm run build:web && sudo systemctl restart ${SERVICE}"
+echo
+echo "Comprueba:  curl -s http://127.0.0.1:${PORT}/health"
 echo
